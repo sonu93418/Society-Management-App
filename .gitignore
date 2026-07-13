@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production builds
+dist/
+**/dist/
+build/
+**/build/
+web-build/
+**/web-build/
+
+# Expo cache and build directories
+.expo/
+**/.expo/
+ios/
+**/ios/
+android/
+**/android/
+
+# Environments & secrets
+.env
+**/.env
+.env*.local
+**/.env*.local
+*.pem
+**/*.pem
+*.key
+**/*.key
+
+# Debug and Logs
+logs/
+**/logs/
+*.log
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+**/*.tsbuildinfo
