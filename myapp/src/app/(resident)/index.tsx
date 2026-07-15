@@ -43,16 +43,22 @@ interface StatCardProps {
   value: string;
   color: string;
   bgColor: string;
+  onPress?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, bgColor }) => (
-  <View style={styles.statCard}>
+const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, bgColor, onPress }) => (
+  <TouchableOpacity
+    style={styles.statCard}
+    activeOpacity={0.7}
+    onPress={onPress}
+    disabled={!onPress}
+  >
     <View style={[styles.statIcon, { backgroundColor: bgColor }]}>
       <Ionicons name={icon} size={18} color={color} />
     </View>
     <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
+    <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+  </TouchableOpacity>
 );
 
 export default function ResidentDashboard() {
@@ -195,6 +201,7 @@ export default function ResidentDashboard() {
             value={pendingLoading ? '...' : String(pendingVisitors.length)}
             color={Colors.warning}
             bgColor={Colors.warningLight}
+            onPress={() => router.push('/(resident)/visitors')}
           />
           <StatCard
             icon="receipt"
@@ -202,6 +209,7 @@ export default function ResidentDashboard() {
             value={ticketsLoading ? '...' : String(openComplaintsCount)}
             color={Colors.danger}
             bgColor={Colors.dangerLight}
+            onPress={() => router.push('/(resident)/helpdesk')}
           />
           <StatCard
             icon="calendar"
@@ -209,6 +217,7 @@ export default function ResidentDashboard() {
             value={bookingsLoading ? '...' : String(upcomingBookingsCount)}
             color={Colors.primary}
             bgColor={Colors.primaryGhost}
+            onPress={() => router.push('/(resident)/amenities')}
           />
         </View>
 

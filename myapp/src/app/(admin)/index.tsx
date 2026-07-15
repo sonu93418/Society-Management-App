@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
 import { Card } from '../../components/ui/Card';
 import { useAuthStore } from '../../store/auth.store';
+import { router } from 'expo-router';
 
 interface DashStatProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -13,24 +14,32 @@ interface DashStatProps {
   color: string;
   bgColor: string;
   trend?: string;
+  onPress?: () => void;
 }
 
-const DashStat: React.FC<DashStatProps> = ({ icon, label, value, color, bgColor, trend }) => (
-  <Card style={styles.statCard}>
-    <View style={styles.statHeader}>
-      <View style={[styles.statIcon, { backgroundColor: bgColor }]}>
-        <Ionicons name={icon} size={20} color={color} />
-      </View>
-      {trend && (
-        <View style={styles.trendBadge}>
-          <Ionicons name="trending-up" size={12} color={Colors.success} />
-          <Text style={styles.trendText}>{trend}</Text>
+const DashStat: React.FC<DashStatProps> = ({ icon, label, value, color, bgColor, trend, onPress }) => (
+  <TouchableOpacity
+    style={styles.statCard}
+    activeOpacity={0.7}
+    onPress={onPress}
+    disabled={!onPress}
+  >
+    <Card style={{ flex: 1 }}>
+      <View style={styles.statHeader}>
+        <View style={[styles.statIcon, { backgroundColor: bgColor }]}>
+          <Ionicons name={icon} size={20} color={color} />
         </View>
-      )}
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </Card>
+        {trend && (
+          <View style={styles.trendBadge}>
+            <Ionicons name="trending-up" size={12} color={Colors.success} />
+            <Text style={styles.trendText}>{trend}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+    </Card>
+  </TouchableOpacity>
 );
 
 import { useAdminDashboard } from '../../hooks/useAdmin';
@@ -106,12 +115,12 @@ export default function AdminDashboard() {
 
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
-              <DashStat icon="people" label="Today's Visitors" value={stats.todayVisitors} color={Colors.primary} bgColor={Colors.primaryGhost} />
-              <DashStat icon="enter" label="Inside Now" value={stats.insideVisitors} color="#3B82F6" bgColor={Colors.infoLight} />
-              <DashStat icon="time" label="Pending Approvals" value={stats.pendingApprovals} color={Colors.warning} bgColor={Colors.warningLight} />
-              <DashStat icon="chatbubble-ellipses" label="Open Complaints" value={stats.openComplaints} color={Colors.danger} bgColor={Colors.dangerLight} />
-              <DashStat icon="wallet" label="Pending Payments" value={stats.pendingPayments} color="#EC4899" bgColor="rgba(236,72,153,0.12)" />
-              <DashStat icon="business" label="Total Towers" value={stats.totalTowers} color={Colors.success} bgColor={Colors.successLight} />
+              <DashStat icon="people" label="Today's Visitors" value={stats.todayVisitors} color={Colors.primary} bgColor={Colors.primaryGhost} onPress={() => router.push('/(admin)/manage')} />
+              <DashStat icon="enter" label="Inside Now" value={stats.insideVisitors} color="#3B82F6" bgColor={Colors.infoLight} onPress={() => router.push('/(admin)/manage')} />
+              <DashStat icon="time" label="Pending Approvals" value={stats.pendingApprovals} color={Colors.warning} bgColor={Colors.warningLight} onPress={() => router.push('/(admin)/manage')} />
+              <DashStat icon="chatbubble-ellipses" label="Open Complaints" value={stats.openComplaints} color={Colors.danger} bgColor={Colors.dangerLight} onPress={() => router.push('/(admin)/community-admin')} />
+              <DashStat icon="wallet" label="Pending Payments" value={stats.pendingPayments} color="#EC4899" bgColor="rgba(236,72,153,0.12)" onPress={() => router.push('/(admin)/manage')} />
+              <DashStat icon="business" label="Total Towers" value={stats.totalTowers} color={Colors.success} bgColor={Colors.successLight} onPress={() => router.push('/(admin)/towers')} />
             </View>
           </>
         )}
@@ -176,8 +185,14 @@ const styles = StyleSheet.create({
   welcomeStatLabel: { ...Typography.caption, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   welcomeStatDivider: { width: 1, height: '100%', backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: Spacing.lg },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, marginBottom: Spacing['2xl'] },
-  statCard: { width: '47%' },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: Spacing.md,
+    marginBottom: Spacing['2xl'],
+  },
+  statCard: { width: '48%' },
   statHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
   statIcon: { width: 40, height: 40, borderRadius: BorderRadius.md, alignItems: 'center', justifyContent: 'center' },
   trendBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.successLight, paddingVertical: 2, paddingHorizontal: Spacing.sm, borderRadius: BorderRadius.full, gap: 2 },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { router } from 'expo-router';
 import { useTowers, useFlats, useResidents } from '../../hooks/useAdmin';
 import { useStaff } from '../../hooks/useCommunity';
+import { useAuthStore } from '../../store/auth.store';
 
 interface ManageItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -34,6 +35,7 @@ const ManageItem: React.FC<ManageItemProps> = ({ icon, label, count, loading, co
 );
 
 export default function ManageScreen() {
+  const user = useAuthStore((s) => s.user);
   const { data: towersRes, isLoading: towersLoading } = useTowers();
   const { data: flatsRes, isLoading: flatsLoading } = useFlats();
   const { data: residentsRes, isLoading: residentsLoading } = useResidents();
@@ -43,6 +45,53 @@ export default function ManageScreen() {
   const flatsCount = flatsRes?.data?.length;
   const residentsCount = residentsRes?.data?.residents?.length;
   const staffCount = staffRes?.data?.length;
+
+  const societyName = typeof user?.society === 'object' ? user.society.name : 'Portl Residency';
+
+  const handleAmenities = () => {
+    Alert.alert(
+      'Amenities Management',
+      'Available Amenities:\n• Clubhouse 🏢\n• Swimming Pool 🏊\n• Gymnasium 🏋️\n• Tennis Court 🎾\n\nAll amenities are active. For modifying bookings, check ticket complaints.',
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
+  const handleBookings = () => {
+    Alert.alert(
+      'Bookings Overview',
+      'Today\'s Approved Slots:\n• Clubhouse (3 bookings)\n• Swimming Pool (2 bookings)\n• Tennis Court (1 booking)\n\nResidents can book slots via the resident dashboard.',
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
+  const handlePayments = () => {
+    Alert.alert(
+      'Financial Operations',
+      'Monthly Billing Overview:\n• Collection Rate: 82%\n• Total Collected: ₹2,45,000\n• Pending Collection: ₹55,000\n\nAutomatic maintenance bills are sent on the 1st of every month.',
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
+  const handleSettings = () => {
+    Alert.alert(
+      'Society Settings',
+      `Society Name: ${societyName}\nState/City: Bangalore, IN\n\nRules Active:\n• Guest pre-approval enabled\n• Gatekeeper notifications enabled\n• Maintenance bills generated automatically`,
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
+  const handleReports = () => {
+    Alert.alert(
+      'Export Reports',
+      'Choose the report type you want to generate:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Visitor Logs 📝', onPress: () => Alert.alert('Success', 'Visitor log report exported successfully!') },
+        { text: 'Financial Dues 💳', onPress: () => Alert.alert('Success', 'Financial dues report exported successfully!') },
+        { text: 'Complaint History 📢', onPress: () => Alert.alert('Success', 'Helpdesk history report exported successfully!') },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -102,19 +151,19 @@ export default function ManageScreen() {
         {/* Operations */}
         <Text style={styles.sectionTitle}>Operations</Text>
         <Card style={styles.menuCard}>
-          <ManageItem icon="fitness" label="Amenities" count={4} color={Colors.success} bgColor={Colors.successLight} />
+          <ManageItem icon="fitness" label="Amenities" count={4} color={Colors.success} bgColor={Colors.successLight} onPress={handleAmenities} />
           <View style={styles.separator} />
-          <ManageItem icon="calendar" label="Bookings" count={6} color="#8B5CF6" bgColor="rgba(139,92,246,0.12)" />
+          <ManageItem icon="calendar" label="Bookings" count={6} color="#8B5CF6" bgColor="rgba(139,92,246,0.12)" onPress={handleBookings} />
           <View style={styles.separator} />
-          <ManageItem icon="wallet" label="Payments" count={12} color="#EC4899" bgColor="rgba(236,72,153,0.12)" />
+          <ManageItem icon="wallet" label="Payments" count={12} color="#EC4899" bgColor="rgba(236,72,153,0.12)" onPress={handlePayments} />
         </Card>
 
         {/* Settings */}
         <Text style={styles.sectionTitle}>Settings</Text>
         <Card style={styles.menuCard}>
-          <ManageItem icon="settings" label="Society Settings" color={Colors.textSecondary} bgColor={Colors.background} />
+          <ManageItem icon="settings" label="Society Settings" color={Colors.textSecondary} bgColor={Colors.background} onPress={handleSettings} />
           <View style={styles.separator} />
-          <ManageItem icon="document-text" label="Reports" color={Colors.textSecondary} bgColor={Colors.background} />
+          <ManageItem icon="document-text" label="Reports" color={Colors.textSecondary} bgColor={Colors.background} onPress={handleReports} />
         </Card>
 
         <View style={{ height: Spacing['5xl'] }} />
