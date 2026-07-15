@@ -10,6 +10,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
 import { useFlats, useCreateFlat, useTowers, useDeleteFlat } from '../../hooks/useAdmin';
 import { router, useLocalSearchParams } from 'expo-router';
+import { getApiError } from '../../api/client';
 
 export default function FlatsScreen() {
   const params = useLocalSearchParams<{ towerId?: string }>();
@@ -50,7 +51,7 @@ export default function FlatsScreen() {
                 refetch();
               },
               onError: (err: any) => {
-                Alert.alert('Error', err?.message || 'Failed to delete flat');
+                Alert.alert('Error', getApiError(err));
               },
             });
           },
@@ -95,7 +96,7 @@ export default function FlatsScreen() {
           refetch();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to create flat');
+          Alert.alert('Error', getApiError(err));
         },
       }
     );
@@ -195,84 +196,86 @@ export default function FlatsScreen() {
 
       {/* Creation Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add New Flat</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+            style={{ width: '100%', justifyContent: 'flex-end' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add New Flat</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
-              {/* Tower Selection */}
-              <Text style={styles.fieldLabel}>Select Tower *</Text>
-              {towers.length === 0 ? (
-                <Text style={{ ...Typography.caption, color: Colors.danger, marginBottom: Spacing.md }}>
-                  No towers available. Please create a tower first.
-                </Text>
-              ) : (
-                <View style={styles.towerSelector}>
-                  {towers.map((t) => (
+              <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
+                {/* Tower Selection */}
+                <Text style={styles.fieldLabel}>Select Tower *</Text>
+                {towers.length === 0 ? (
+                  <Text style={{ ...Typography.caption, color: Colors.danger, marginBottom: Spacing.md }}>
+                    No towers available. Please create a tower first.
+                  </Text>
+                ) : (
+                  <View style={styles.towerSelector}>
+                    {towers.map((t) => (
+                      <TouchableOpacity
+                        key={t._id}
+                        style={[styles.towerOption, selectedTowerId === t._id && styles.towerOptionActive]}
+                        onPress={() => setSelectedTowerId(t._id)}
+                      >
+                        <Text style={[styles.towerOptionText, selectedTowerId === t._id && styles.towerOptionTextActive]}>
+                          Tower {t.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                <Input
+                  label="Flat Number *"
+                  placeholder="e.g. 101, 304"
+                  value={flatNumber}
+                  onChangeText={setFlatNumber}
+                  leftIcon="home-outline"
+                />
+
+                <Input
+                  label="Floor *"
+                  placeholder="e.g. 1, 3"
+                  keyboardType="numeric"
+                  value={floor}
+                  onChangeText={setFloor}
+                  leftIcon="layers-outline"
+                />
+
+                <Text style={styles.fieldLabel}>Flat Type</Text>
+                <View style={styles.typeSelector}>
+                  {['1BHK', '2BHK', '3BHK', '4BHK', 'Penthouse'].map((type) => (
                     <TouchableOpacity
-                      key={t._id}
-                      style={[styles.towerOption, selectedTowerId === t._id && styles.towerOptionActive]}
-                      onPress={() => setSelectedTowerId(t._id)}
+                      key={type}
+                      style={[styles.typeOption, flatType === type && styles.typeOptionActive]}
+                      onPress={() => setFlatType(type)}
                     >
-                      <Text style={[styles.towerOptionText, selectedTowerId === t._id && styles.towerOptionTextActive]}>
-                        Tower {t.name}
+                      <Text style={[styles.typeOptionText, flatType === type && styles.typeOptionTextActive]}>
+                        {type}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              )}
 
-              <Input
-                label="Flat Number *"
-                placeholder="e.g. 101, 304"
-                value={flatNumber}
-                onChangeText={setFlatNumber}
-                leftIcon="home-outline"
-              />
-
-              <Input
-                label="Floor *"
-                placeholder="e.g. 1, 3"
-                keyboardType="numeric"
-                value={floor}
-                onChangeText={setFloor}
-                leftIcon="layers-outline"
-              />
-
-              <Text style={styles.fieldLabel}>Flat Type</Text>
-              <View style={styles.typeSelector}>
-                {['1BHK', '2BHK', '3BHK', '4BHK', 'Penthouse'].map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[styles.typeOption, flatType === type && styles.typeOptionActive]}
-                    onPress={() => setFlatType(type)}
-                  >
-                    <Text style={[styles.typeOptionText, flatType === type && styles.typeOptionTextActive]}>
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Button
-                title="Create Flat"
-                onPress={handleCreate}
-                loading={createFlatMutation.isPending}
-                disabled={towers.length === 0}
-                fullWidth
-                style={{ marginTop: Spacing.xl }}
-              />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+                <Button
+                  title="Create Flat"
+                  onPress={handleCreate}
+                  loading={createFlatMutation.isPending}
+                  disabled={towers.length === 0}
+                  fullWidth
+                  style={{ marginTop: Spacing.xl }}
+                />
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   );

@@ -188,7 +188,7 @@ export default function PreApproveScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -266,6 +266,7 @@ export default function PreApproveScreen() {
         <Button
           title="Pre-Approve Visitor"
           onPress={handleSubmit}
+          loading={preApproveMutation.isPending}
           fullWidth
           size="lg"
           style={{ marginTop: Spacing['2xl'] }}

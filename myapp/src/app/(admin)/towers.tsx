@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useTowers, useCreateTower, useDeleteTower } from '../../hooks/useAdmin';
 import { router } from 'expo-router';
+import { getApiError } from '../../api/client';
 
 export default function TowersScreen() {
   const { data: towersRes, isLoading, refetch } = useTowers();
@@ -37,7 +38,7 @@ export default function TowersScreen() {
                 refetch();
               },
               onError: (err: any) => {
-                Alert.alert('Error', err?.message || 'Failed to delete tower');
+                Alert.alert('Error', getApiError(err));
               },
             });
           },
@@ -69,7 +70,7 @@ export default function TowersScreen() {
           refetch();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to create tower');
+          Alert.alert('Error', getApiError(err));
         },
       }
     );
@@ -140,46 +141,48 @@ export default function TowersScreen() {
 
       {/* Creation Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add New Tower</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+            style={{ width: '100%', justifyContent: 'flex-end' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add New Tower</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
+                <Input
+                  label="Tower Name *"
+                  placeholder="e.g. Tower A, Wing B"
+                  value={name}
+                  onChangeText={setName}
+                  leftIcon="business-outline"
+                />
+
+                <Input
+                  label="Total Floors *"
+                  placeholder="e.g. 12"
+                  keyboardType="numeric"
+                  value={totalFloors}
+                  onChangeText={setTotalFloors}
+                  leftIcon="layers-outline"
+                />
+
+                <Button
+                  title="Create Tower"
+                  onPress={handleCreate}
+                  loading={createTowerMutation.isPending}
+                  fullWidth
+                  style={{ marginTop: Spacing.xl }}
+                />
+              </ScrollView>
             </View>
-
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
-              <Input
-                label="Tower Name *"
-                placeholder="e.g. Tower A, Wing B"
-                value={name}
-                onChangeText={setName}
-                leftIcon="business-outline"
-              />
-
-              <Input
-                label="Total Floors *"
-                placeholder="e.g. 12"
-                keyboardType="numeric"
-                value={totalFloors}
-                onChangeText={setTotalFloors}
-                leftIcon="layers-outline"
-              />
-
-              <Button
-                title="Create Tower"
-                onPress={handleCreate}
-                loading={createTowerMutation.isPending}
-                fullWidth
-                style={{ marginTop: Spacing.xl }}
-              />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   );

@@ -85,7 +85,7 @@ export default function RegisterVisitor() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Register Visitor</Text>
@@ -206,6 +206,7 @@ export default function RegisterVisitor() {
         <Button
           title="Send Approval Request"
           onPress={handleRegister}
+          loading={createMutation.isPending}
           fullWidth
           size="lg"
           style={{ marginTop: Spacing.xl }}

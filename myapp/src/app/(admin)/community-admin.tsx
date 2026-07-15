@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/Input';
 import { useNotices, usePolls, useAllTickets, useCreateNotice, useCreatePoll } from '../../hooks/useCommunity';
 import { ActivityIndicator, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
+import { getApiError } from '../../api/client';
 
 export default function CommunityAdmin() {
   const { data: noticesResponse, isLoading: noticesLoading, refetch: refetchNotices } = useNotices();
@@ -84,7 +85,7 @@ export default function CommunityAdmin() {
           refetchNotices();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to post notice');
+          Alert.alert('Error', getApiError(err));
         },
       }
     );
@@ -146,7 +147,7 @@ export default function CommunityAdmin() {
           refetchPolls();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to create poll');
+          Alert.alert('Error', getApiError(err));
         },
       }
     );
@@ -192,10 +193,10 @@ export default function CommunityAdmin() {
           />
           <Button
             title="Create Poll"
-            variant="secondary"
+            variant="primary"
             size="sm"
             onPress={() => setPollModalVisible(true)}
-            icon={<Ionicons name="bar-chart-outline" size={16} color={Colors.primary} />}
+            icon={<Ionicons name="bar-chart-outline" size={16} color={Colors.white} />}
             style={{ flex: 1 }}
           />
         </View>
@@ -277,143 +278,147 @@ export default function CommunityAdmin() {
 
       {/* --- NOTICE CREATION MODAL --- */}
       <Modal visible={noticeModalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Post New Notice</Text>
-              <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Input
-                label="Title *"
-                placeholder="Notice headline"
-                value={noticeTitle}
-                onChangeText={setNoticeTitle}
-                leftIcon="document-text-outline"
-              />
-
-              <Input
-                label="Content *"
-                placeholder="Write notice description..."
-                value={noticeContent}
-                onChangeText={setNoticeContent}
-                multiline
-                numberOfLines={5}
-                style={{ minHeight: 120, textAlignVertical: 'top' }}
-              />
-
-              <View style={styles.switchRow}>
-                <View>
-                  <Text style={styles.switchLabel}>Pin to Top</Text>
-                  <Text style={styles.switchDesc}>Keep notice highlighted at community banner</Text>
-                </View>
-                <Switch
-                  value={noticePinned}
-                  onValueChange={setNoticePinned}
-                  trackColor={{ false: Colors.border, true: Colors.danger }}
-                  thumbColor={Colors.white}
-                />
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+            style={{ width: '100%', justifyContent: 'flex-end' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Post New Notice</Text>
+                <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
               </View>
 
-              <Button
-                title="Publish Notice"
-                onPress={handleCreateNotice}
-                loading={createNoticeMutation.isPending}
-                fullWidth
-                style={{ marginTop: Spacing['2xl'] }}
-                icon={<Ionicons name="send" size={20} color={Colors.white} />}
-              />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+              <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Input
+                  label="Title *"
+                  placeholder="Notice headline"
+                  value={noticeTitle}
+                  onChangeText={setNoticeTitle}
+                  leftIcon="document-text-outline"
+                />
+
+                <Input
+                  label="Content *"
+                  placeholder="Write notice description..."
+                  value={noticeContent}
+                  onChangeText={setNoticeContent}
+                  multiline
+                  numberOfLines={5}
+                  style={{ minHeight: 120, textAlignVertical: 'top' }}
+                />
+
+                <View style={styles.switchRow}>
+                  <View>
+                    <Text style={styles.switchLabel}>Pin to Top</Text>
+                    <Text style={styles.switchDesc}>Keep notice highlighted at community banner</Text>
+                  </View>
+                  <Switch
+                    value={noticePinned}
+                    onValueChange={setNoticePinned}
+                    trackColor={{ false: Colors.border, true: Colors.danger }}
+                    thumbColor={Colors.white}
+                  />
+                </View>
+
+                <Button
+                  title="Publish Notice"
+                  onPress={handleCreateNotice}
+                  loading={createNoticeMutation.isPending}
+                  fullWidth
+                  style={{ marginTop: Spacing['2xl'] }}
+                  icon={<Ionicons name="send" size={20} color={Colors.white} />}
+                />
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* --- POLL CREATION MODAL --- */}
       <Modal visible={pollModalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Opinion Poll</Text>
-              <TouchableOpacity onPress={() => setPollModalVisible(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Input
-                label="Question / Title *"
-                placeholder="e.g. Should we install EV charging stations?"
-                value={pollTitle}
-                onChangeText={setPollTitle}
-                leftIcon="help-circle-outline"
-              />
-
-              <Input
-                label="Description (Optional)"
-                placeholder="Details or cost estimates of the proposal"
-                value={pollDescription}
-                onChangeText={setPollDescription}
-                multiline
-                numberOfLines={3}
-                style={{ minHeight: 70, textAlignVertical: 'top' }}
-              />
-
-              <Text style={styles.fieldLabel}>Poll Options (Min. 2, Max. 5)</Text>
-              {pollOptions.map((option, idx) => (
-                <View key={idx} style={styles.optionInputRow}>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      placeholder={`Option ${idx + 1}`}
-                      value={option}
-                      onChangeText={(text) => handleOptionChange(text, idx)}
-                      containerStyle={{ marginBottom: 0 }}
-                    />
-                  </View>
-                  {pollOptions.length > 2 && (
-                    <TouchableOpacity style={styles.optionRemoveBtn} onPress={() => removeOptionField(idx)}>
-                      <Ionicons name="remove-circle-outline" size={24} color={Colors.danger} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-
-              {pollOptions.length < 5 && (
-                <TouchableOpacity style={styles.addOptionBtn} onPress={addOptionField}>
-                  <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.addOptionText}>Add Option</Text>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+            style={{ width: '100%', justifyContent: 'flex-end' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Create Opinion Poll</Text>
+                <TouchableOpacity onPress={() => setPollModalVisible(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
-              )}
+              </View>
 
-              <Input
-                label="Duration (in Days) *"
-                placeholder="e.g. 7"
-                keyboardType="numeric"
-                value={pollDays}
-                onChangeText={setPollDays}
-                leftIcon="time-outline"
-                containerStyle={{ marginTop: Spacing.md }}
-              />
+              <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Input
+                  label="Question / Title *"
+                  placeholder="e.g. Should we install EV charging stations?"
+                  value={pollTitle}
+                  onChangeText={setPollTitle}
+                  leftIcon="help-circle-outline"
+                />
 
-              <Button
-                title="Create Poll"
-                onPress={handleCreatePoll}
-                loading={createPollMutation.isPending}
-                fullWidth
-                style={{ marginTop: Spacing['2xl'] }}
-                icon={<Ionicons name="send" size={20} color={Colors.white} />}
-              />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+                <Input
+                  label="Description (Optional)"
+                  placeholder="Details or cost estimates of the proposal"
+                  value={pollDescription}
+                  onChangeText={setPollDescription}
+                  multiline
+                  numberOfLines={3}
+                  style={{ minHeight: 70, textAlignVertical: 'top' }}
+                />
+
+                <Text style={styles.fieldLabel}>Poll Options (Min. 2, Max. 5)</Text>
+                {pollOptions.map((option, idx) => (
+                  <View key={idx} style={styles.optionInputRow}>
+                    <View style={{ flex: 1 }}>
+                      <Input
+                        placeholder={`Option ${idx + 1}`}
+                        value={option}
+                        onChangeText={(text) => handleOptionChange(text, idx)}
+                        containerStyle={{ marginBottom: 0 }}
+                      />
+                    </View>
+                    {pollOptions.length > 2 && (
+                      <TouchableOpacity style={styles.optionRemoveBtn} onPress={() => removeOptionField(idx)}>
+                        <Ionicons name="remove-circle-outline" size={24} color={Colors.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+
+                {pollOptions.length < 5 && (
+                  <TouchableOpacity style={styles.addOptionBtn} onPress={addOptionField}>
+                    <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.addOptionText}>Add Option</Text>
+                  </TouchableOpacity>
+                )}
+
+                <Input
+                  label="Duration (in Days) *"
+                  placeholder="e.g. 7"
+                  keyboardType="numeric"
+                  value={pollDays}
+                  onChangeText={setPollDays}
+                  leftIcon="time-outline"
+                  containerStyle={{ marginTop: Spacing.md }}
+                />
+
+                <Button
+                  title="Create Poll"
+                  onPress={handleCreatePoll}
+                  loading={createPollMutation.isPending}
+                  fullWidth
+                  style={{ marginTop: Spacing['2xl'] }}
+                  icon={<Ionicons name="send" size={20} color={Colors.white} />}
+                />
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   );

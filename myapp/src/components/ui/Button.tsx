@@ -59,7 +59,11 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'outline' || variant === 'ghost' ? Colors.primary : Colors.white}
+          color={
+            variant === 'outline' || variant === 'ghost' || variant === 'secondary'
+              ? Colors.primary
+              : Colors.white
+          }
         />
       ) : (
         <View style={styles.content}>
