@@ -103,7 +103,7 @@ export default function ResidentVisitors() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Visitors</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/pre-approve')}>
+        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/(resident)/pre-approve')}>
           <Ionicons name="add" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>

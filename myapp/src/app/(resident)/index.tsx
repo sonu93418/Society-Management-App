@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -14,6 +16,9 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme'
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useAuthStore } from '../../store/auth.store';
+import { usePendingVisitors, useApproveVisitor, useRejectVisitor } from '../../hooks/useVisitors';
+import { useMyTickets, useBookings, useNotices, usePayments, usePayDues } from '../../hooks/useCommunity';
+import * as Haptics from 'expo-haptics';
 
 interface QuickActionProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -54,10 +59,107 @@ export default function ResidentDashboard() {
   const user = useAuthStore((s) => s.user);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = useCallback(() => {
+  // --- Real API Data Queries ---
+  const { data: pendingResponse, isLoading: pendingLoading, refetch: refetchPending } = usePendingVisitors();
+  const { data: ticketsResponse, isLoading: ticketsLoading, refetch: refetchTickets } = useMyTickets({ status: 'open' });
+  const { data: bookingsResponse, isLoading: bookingsLoading, refetch: refetchBookings } = useBookings({ mine: 'true' });
+  const { data: noticesResponse, isLoading: noticesLoading, refetch: refetchNotices } = useNotices();
+  const { data: paymentsResponse, isLoading: paymentsLoading, refetch: refetchPayments } = usePayments({ status: 'pending' });
+
+  const approveMutation = useApproveVisitor();
+  const rejectMutation = useRejectVisitor();
+  const payDuesMutation = usePayDues();
+
+  const pendingVisitors = pendingResponse?.data || [];
+  const openComplaintsCount = ticketsResponse?.data?.tickets?.length ?? 0;
+  const upcomingBookingsCount = bookingsResponse?.data?.bookings?.filter((b: any) => b.status === 'approved').length ?? 0;
+  const recentNotices = noticesResponse?.data?.notices?.slice(0, 2) || [];
+  const pendingPayments = paymentsResponse?.data?.payments || [];
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    await Promise.all([
+      refetchPending(),
+      refetchTickets(),
+      refetchBookings(),
+      refetchNotices(),
+      refetchPayments(),
+    ]);
+    setRefreshing(false);
+  }, [refetchPending, refetchTickets, refetchBookings, refetchNotices, refetchPayments]);
+
+  const handleApprove = (id: string, name: string) => {
+    approveMutation.mutate(id, {
+      onSuccess: () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Success', `Approved entry for ${name}`);
+        refetchPending();
+      },
+      onError: (err: any) => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Error', err?.message || 'Failed to approve visitor');
+      },
+    });
+  };
+
+  const handleReject = (id: string, name: string) => {
+    Alert.alert(
+      'Reject Visitor',
+      `Are you sure you want to reject entry for ${name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: () => {
+            rejectMutation.mutate(
+              { id, reason: 'Rejected by resident from dashboard' },
+              {
+                onSuccess: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  Alert.alert('Success', `Rejected entry for ${name}`);
+                  refetchPending();
+                },
+                onError: (err: any) => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                  Alert.alert('Error', err?.message || 'Failed to reject visitor');
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handlePayNow = (paymentId: string, month: string, amount: number) => {
+    Alert.alert(
+      'Pay Maintenance',
+      `Pay ₹${amount.toLocaleString('en-IN')} for ${month} maintenance?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Pay Now',
+          onPress: () => {
+            payDuesMutation.mutate(
+              { paymentId, transactionId: 'TXN_' + Math.random().toString(36).substr(2, 9).toUpperCase() },
+              {
+                onSuccess: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  Alert.alert('Payment Successful', `Maintenance for ${month} paid.`);
+                  refetchPayments();
+                },
+                onError: (err: any) => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                  Alert.alert('Error', err?.message || 'Failed to process payment');
+                },
+              }
+            );
+          },
+        },
+      ]
+    );
+  };
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -79,17 +181,35 @@ export default function ResidentDashboard() {
             <Text style={styles.greeting}>{greeting()} 👋</Text>
             <Text style={styles.userName}>{user?.name || 'Resident'}</Text>
           </View>
-          <TouchableOpacity style={styles.notifButton}>
+          <TouchableOpacity style={styles.notifButton} onPress={() => router.push('/(resident)/visitors')}>
             <Ionicons name="notifications-outline" size={24} color={Colors.text} />
-            <View style={styles.notifDot} />
+            {pendingVisitors.length > 0 && <View style={styles.notifDot} />}
           </TouchableOpacity>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatCard icon="people" label="Pending Visitors" value="2" color={Colors.warning} bgColor={Colors.warningLight} />
-          <StatCard icon="receipt" label="Open Complaints" value="1" color={Colors.danger} bgColor={Colors.dangerLight} />
-          <StatCard icon="calendar" label="Upcoming Bookings" value="3" color={Colors.primary} bgColor={Colors.primaryGhost} />
+          <StatCard
+            icon="people"
+            label="Pending Visitors"
+            value={pendingLoading ? '...' : String(pendingVisitors.length)}
+            color={Colors.warning}
+            bgColor={Colors.warningLight}
+          />
+          <StatCard
+            icon="receipt"
+            label="Open Complaints"
+            value={ticketsLoading ? '...' : String(openComplaintsCount)}
+            color={Colors.danger}
+            bgColor={Colors.dangerLight}
+          />
+          <StatCard
+            icon="calendar"
+            label="Upcoming Slots"
+            value={bookingsLoading ? '...' : String(upcomingBookingsCount)}
+            color={Colors.primary}
+            bgColor={Colors.primaryGhost}
+          />
         </View>
 
         {/* Quick Actions */}
@@ -103,7 +223,7 @@ export default function ResidentDashboard() {
           <QuickAction icon="wallet-outline" label="Payments" color="#EC4899" bgColor="rgba(236,72,153,0.12)" onPress={() => router.push('/(resident)/payments')} />
         </View>
 
-        {/* Pending Visitors */}
+        {/* Pending Approvals */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Pending Approvals</Text>
           <TouchableOpacity onPress={() => router.push('/(resident)/visitors')}>
@@ -111,80 +231,115 @@ export default function ResidentDashboard() {
           </TouchableOpacity>
         </View>
 
-        <Card style={styles.visitorCard}>
-          <View style={styles.visitorRow}>
-            <View style={[styles.visitorAvatar, { backgroundColor: Colors.warningLight }]}>
-              <Ionicons name="cube-outline" size={20} color={Colors.warning} />
-            </View>
-            <View style={styles.visitorInfo}>
-              <Text style={styles.visitorName}>Rahul Delivery</Text>
-              <Text style={styles.visitorPurpose}>Amazon Package</Text>
-            </View>
-            <Badge label="pending" variant="pending" size="sm" />
-          </View>
-          <View style={styles.visitorActions}>
-            <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]}>
-              <Ionicons name="close" size={18} color={Colors.danger} />
-              <Text style={[styles.actionBtnText, { color: Colors.danger }]}>Reject</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.approveBtn]}>
-              <Ionicons name="checkmark" size={18} color={Colors.white} />
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Approve</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
+        {pendingLoading ? (
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: Spacing.md }} />
+        ) : pendingVisitors.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Ionicons name="checkmark-circle-outline" size={24} color={Colors.success} />
+            <Text style={styles.emptyText}>All visitors verified. No pending requests!</Text>
+          </Card>
+        ) : (
+          (() => {
+            const visitor = pendingVisitors[0];
+            return (
+              <Card style={styles.visitorCard}>
+                <View style={styles.visitorRow}>
+                  <View style={[styles.visitorAvatar, { backgroundColor: Colors.warningLight }]}>
+                    <Ionicons name="cube-outline" size={20} color={Colors.warning} />
+                  </View>
+                  <View style={styles.visitorInfo}>
+                    <Text style={styles.visitorName}>{visitor.visitorName}</Text>
+                    <Text style={styles.visitorPurpose}>{visitor.purpose || 'None'} • {visitor.type}</Text>
+                  </View>
+                  <Badge label="pending" variant="pending" size="sm" />
+                </View>
+                <View style={styles.visitorActions}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.rejectBtn]}
+                    onPress={() => handleReject(visitor._id, visitor.visitorName)}
+                  >
+                    <Ionicons name="close" size={18} color={Colors.danger} />
+                    <Text style={[styles.actionBtnText, { color: Colors.danger }]}>Reject</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.approveBtn]}
+                    onPress={() => handleApprove(visitor._id, visitor.visitorName)}
+                  >
+                    <Ionicons name="checkmark" size={18} color={Colors.white} />
+                    <Text style={[styles.actionBtnText, { color: Colors.white }]}>Approve</Text>
+                  </TouchableOpacity>
+                </View>
+              </Card>
+            );
+          })()
+        )}
 
         {/* Recent Notices */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Notices</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(resident)/notices')}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
 
-        <Card style={styles.noticeCard}>
-          <View style={styles.noticeRow}>
-            <View style={[styles.noticeIcon, { backgroundColor: Colors.dangerLight }]}>
-              <Ionicons name="alert-circle" size={18} color={Colors.danger} />
-            </View>
-            <View style={styles.noticeInfo}>
-              <Text style={styles.noticeTitleText}>Water Supply Maintenance</Text>
-              <Text style={styles.noticeDate}>July 14, 2026</Text>
-            </View>
-            <Badge label="Pinned" variant="danger" size="sm" />
-          </View>
-        </Card>
-
-        <Card style={styles.noticeCard}>
-          <View style={styles.noticeRow}>
-            <View style={[styles.noticeIcon, { backgroundColor: Colors.primaryGhost }]}>
-              <Ionicons name="calendar" size={18} color={Colors.primary} />
-            </View>
-            <View style={styles.noticeInfo}>
-              <Text style={styles.noticeTitleText}>Annual General Meeting</Text>
-              <Text style={styles.noticeDate}>July 25, 2026</Text>
-            </View>
-          </View>
-        </Card>
+        {noticesLoading ? (
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: Spacing.md }} />
+        ) : recentNotices.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No recent notices.</Text>
+          </Card>
+        ) : (
+          recentNotices.map((notice: any) => (
+            <Card key={notice._id} style={styles.noticeCard}>
+              <View style={styles.noticeRow}>
+                <View style={[styles.noticeIcon, { backgroundColor: notice.isPinned ? Colors.dangerLight : Colors.primaryGhost }]}>
+                  <Ionicons name={notice.isPinned ? 'pin' : 'megaphone'} size={18} color={notice.isPinned ? Colors.danger : Colors.primary} />
+                </View>
+                <View style={styles.noticeInfo}>
+                  <Text style={styles.noticeTitleText} numberOfLines={1}>{notice.title}</Text>
+                  <Text style={styles.noticeDate}>{new Date(notice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+                </View>
+                {notice.isPinned && <Badge label="Pinned" variant="danger" size="sm" />}
+              </View>
+            </Card>
+          ))
+        )}
 
         {/* Maintenance Due */}
-        <Text style={styles.sectionTitle}>Maintenance Due</Text>
-        <Card>
-          <View style={styles.paymentRow}>
-            <View>
-              <Text style={styles.paymentMonth}>July 2026</Text>
-              <Text style={styles.paymentDesc}>Monthly Maintenance</Text>
-            </View>
-            <View style={styles.paymentRight}>
-              <Text style={styles.paymentAmount}>₹5,000</Text>
-              <Badge label="overdue" variant="overdue" size="sm" />
-            </View>
-          </View>
-          <TouchableOpacity style={styles.payNowBtn}>
-            <Text style={styles.payNowText}>Pay Now</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        </Card>
+        <Text style={styles.sectionTitle}>Maintenance Dues</Text>
+        {paymentsLoading ? (
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: Spacing.md }} />
+        ) : pendingPayments.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Ionicons name="checkmark-circle-outline" size={24} color={Colors.success} />
+            <Text style={styles.emptyText}>No pending maintenance dues. Awesome!</Text>
+          </Card>
+        ) : (
+          (() => {
+            const payment = pendingPayments[0];
+            return (
+              <Card>
+                <View style={styles.paymentRow}>
+                  <View>
+                    <Text style={styles.paymentMonth}>{payment.month} {payment.year}</Text>
+                    <Text style={styles.paymentDesc}>{payment.description || 'Monthly Maintenance'}</Text>
+                  </View>
+                  <View style={styles.paymentRight}>
+                    <Text style={styles.paymentAmount}>₹{payment.amount.toLocaleString('en-IN')}</Text>
+                    <Badge label={payment.status} variant="overdue" size="sm" />
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.payNowBtn}
+                  onPress={() => handlePayNow(payment._id, payment.month, payment.amount)}
+                >
+                  <Text style={styles.payNowText}>Pay Now</Text>
+                  <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+                </TouchableOpacity>
+              </Card>
+            );
+          })()
+        )}
 
         <View style={{ height: Spacing['3xl'] }} />
       </ScrollView>
@@ -243,4 +398,7 @@ const styles = StyleSheet.create({
   paymentAmount: { ...Typography.h4, color: Colors.text },
   payNowBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: Spacing.lg, paddingVertical: Spacing.sm + 2, backgroundColor: Colors.primaryGhost, borderRadius: BorderRadius.md, gap: Spacing.xs },
   payNowText: { ...Typography.buttonSm, color: Colors.primary },
+
+  emptyCard: { padding: Spacing.xl, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg },
+  emptyText: { ...Typography.bodySm, color: Colors.textSecondary, fontStyle: 'italic' },
 });

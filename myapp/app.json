@@ -62,8 +62,8 @@
       "eas": {
         "projectId": "8711fdcc-1d94-40b2-9c61-ee508b4c4b8c"
       },
-      "apiUrl": "http://10.141.195.148:5000/api/v1",
-      "socketUrl": "http://10.141.195.148:5000"
+      "apiUrl": "http://10.181.99.148:5000/api/v1",
+      "socketUrl": "http://10.181.99.148:5000"
     }
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -86,15 +86,19 @@ export default function HelpdeskScreen() {
   if (showCreate) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setShowCreate(false)} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Raise Complaint</Text>
-          <View style={{ width: 40 }} />
-        </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => setShowCreate(false)} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Raise Complaint</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Input label="Title *" placeholder="Brief description of the issue" value={title} onChangeText={setTitle} leftIcon="document-text-outline" />
           <Input label="Description *" placeholder="Provide details about the issue..." value={description} onChangeText={setDescription} multiline numberOfLines={4} style={{ minHeight: 100, textAlignVertical: 'top' }} />
 
@@ -129,7 +133,8 @@ export default function HelpdeskScreen() {
 
           <Button title="Submit Complaint" onPress={handleCreate} loading={createTicketMutation.isPending} fullWidth size="lg" style={{ marginTop: Spacing['2xl'] }} icon={<Ionicons name="send" size={20} color={Colors.white} />} />
         </ScrollView>
-      </SafeAreaView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
     );
   }
 

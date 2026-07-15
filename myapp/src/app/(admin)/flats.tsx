@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
@@ -8,21 +8,56 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
-import { useFlats, useCreateFlat, useTowers } from '../../hooks/useAdmin';
-import { router } from 'expo-router';
+import { useFlats, useCreateFlat, useTowers, useDeleteFlat } from '../../hooks/useAdmin';
+import { router, useLocalSearchParams } from 'expo-router';
 
 export default function FlatsScreen() {
+  const params = useLocalSearchParams<{ towerId?: string }>();
   const { data: towersRes } = useTowers();
   const towers = towersRes?.data || [];
 
-  const [selectedTowerFilter, setSelectedTowerFilter] = useState<string | null>(null);
+  const [selectedTowerFilter, setSelectedTowerFilter] = useState<string | null>(
+    params.towerId || null
+  );
+
+  useEffect(() => {
+    if (params.towerId) {
+      setSelectedTowerFilter(params.towerId);
+    }
+  }, [params.towerId]);
 
   const { data: flatsRes, isLoading, refetch } = useFlats(
     selectedTowerFilter ? { towerId: selectedTowerFilter } : undefined
   );
   const createFlatMutation = useCreateFlat();
+  const deleteFlatMutation = useDeleteFlat();
 
   const flats = flatsRes?.data || [];
+
+  const handleDelete = (id: string, flatName: string) => {
+    Alert.alert(
+      'Delete Flat',
+      `Are you sure you want to delete Flat ${flatName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteFlatMutation.mutate(id, {
+              onSuccess: () => {
+                Alert.alert('Success', `Flat ${flatName} deleted successfully`);
+                refetch();
+              },
+              onError: (err: any) => {
+                Alert.alert('Error', err?.message || 'Failed to delete flat');
+              },
+            });
+          },
+        },
+      ]
+    );
+  };
 
   const [modalVisible, setModalVisible] = useState(false);
   const [flatNumber, setFlatNumber] = useState('');
@@ -139,10 +174,19 @@ export default function FlatsScreen() {
                   <Text style={styles.flatName}>Flat {getTowerName(flat)}-{flat.flatNumber}</Text>
                   <Text style={styles.flatDetails}>Floor {flat.floor} • {flat.type || 'N/A'}</Text>
                 </View>
-                <Badge
-                  label={flat.isOccupied ? 'Occupied' : 'Vacant'}
-                  variant={flat.isOccupied ? 'success' : 'low'}
-                />
+                <View style={styles.flatRight}>
+                  <Badge
+                    label={flat.isOccupied ? 'Occupied' : 'Vacant'}
+                    variant={flat.isOccupied ? 'success' : 'low'}
+                  />
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => handleDelete(flat._id, `${getTowerName(flat)}-${flat.flatNumber}`)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={Colors.danger} style={{ marginTop: Spacing.xs }} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </Card>
           ))}
@@ -151,7 +195,10 @@ export default function FlatsScreen() {
 
       {/* Creation Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Flat</Text>
@@ -160,7 +207,7 @@ export default function FlatsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
               {/* Tower Selection */}
               <Text style={styles.fieldLabel}>Select Tower *</Text>
               {towers.length === 0 ? (
@@ -225,7 +272,7 @@ export default function FlatsScreen() {
               />
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -266,4 +313,14 @@ const styles = StyleSheet.create({
   typeOptionActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   typeOptionText: { ...Typography.captionMedium, color: Colors.textSecondary },
   typeOptionTextActive: { color: Colors.white },
+  flatRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+  },
+  deleteBtn: {
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

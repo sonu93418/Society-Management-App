@@ -45,20 +45,26 @@ function AuthGate() {
     // Don't navigate if router isn't ready yet
     if (!navigationReady.current) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const routeSegments = segments as string[];
+    const inAuthGroup = routeSegments[0] === '(auth)';
+    const isAtRoot = routeSegments.length === 0 || routeSegments[0] === 'index' || routeSegments[0] === '';
 
-    if (!isAuthenticated && !inAuthGroup) {
-      // Not authenticated → send to login
-      router.replace('/(auth)/login');
-    } else if (isAuthenticated && inAuthGroup) {
-      // Authenticated but on auth screen → send to role dashboard
-      const role = user?.role;
-      if (role === 'admin') {
-        router.replace('/(admin)');
-      } else if (role === 'guard') {
-        router.replace('/(guard)');
-      } else {
-        router.replace('/(resident)');
+    if (!isAuthenticated) {
+      // Not authenticated → send to login if not already there
+      if (!inAuthGroup) {
+        router.replace('/(auth)/login');
+      }
+    } else {
+      // Authenticated → send to role dashboard if on auth screen or root entry screen
+      if (inAuthGroup || isAtRoot) {
+        const role = user?.role;
+        if (role === 'admin') {
+          router.replace('/(admin)');
+        } else if (role === 'guard') {
+          router.replace('/(guard)');
+        } else {
+          router.replace('/(resident)');
+        }
       }
     }
   }, [isAuthenticated, isLoading, user?.role, segments, router]);

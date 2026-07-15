@@ -127,12 +127,20 @@ export const adminApi = {
     const res = await apiClient.post<ApiResponse<Tower>>('/admin/towers', data);
     return res.data;
   },
+  deleteTower: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<Tower>>(`/admin/towers/${id}`);
+    return res.data;
+  },
   getFlats: async (params?: { towerId?: string }) => {
     const res = await apiClient.get<ApiResponse<Flat[]>>('/admin/flats', { params });
     return res.data;
   },
   createFlat: async (data: { flatNumber: string; floor: number; towerId: string; type?: string }) => {
     const res = await apiClient.post<ApiResponse<Flat>>('/admin/flats', data);
+    return res.data;
+  },
+  deleteFlat: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<Flat>>(`/admin/flats/${id}`);
     return res.data;
   },
   getResidents: async (params?: { page?: number }) => {

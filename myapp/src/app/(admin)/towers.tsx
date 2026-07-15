@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
@@ -7,18 +7,44 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useTowers, useCreateTower } from '../../hooks/useAdmin';
+import { useTowers, useCreateTower, useDeleteTower } from '../../hooks/useAdmin';
 import { router } from 'expo-router';
 
 export default function TowersScreen() {
   const { data: towersRes, isLoading, refetch } = useTowers();
   const createTowerMutation = useCreateTower();
+  const deleteTowerMutation = useDeleteTower();
 
   const towers = towersRes?.data || [];
 
   const [modalVisible, setModalVisible] = useState(false);
   const [name, setName] = useState('');
   const [totalFloors, setTotalFloors] = useState('');
+
+  const handleDelete = (id: string, towerName: string) => {
+    Alert.alert(
+      'Delete Tower',
+      `Are you sure you want to delete ${towerName}? This will also delete all flats in this tower.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteTowerMutation.mutate(id, {
+              onSuccess: () => {
+                Alert.alert('Success', `Tower ${towerName} deleted successfully`);
+                refetch();
+              },
+              onError: (err: any) => {
+                Alert.alert('Error', err?.message || 'Failed to delete tower');
+              },
+            });
+          },
+        },
+      ]
+    );
+  };
 
   const handleCreate = () => {
     if (!name.trim() || !totalFloors.trim()) {
@@ -83,25 +109,41 @@ export default function TowersScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {towers.map((tower) => (
-            <Card key={tower._id} style={styles.towerCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.iconBg}>
-                  <Ionicons name="business" size={24} color={Colors.primary} />
+            <TouchableOpacity
+              key={tower._id}
+              activeOpacity={0.7}
+              onPress={() => router.push({ pathname: '/(admin)/flats', params: { towerId: tower._id } })}
+            >
+              <Card style={styles.towerCard}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.iconBg}>
+                    <Ionicons name="business" size={24} color={Colors.primary} />
+                  </View>
+                  <View style={styles.headerText}>
+                    <Text style={styles.towerName}>Tower {tower.name}</Text>
+                    <Text style={styles.towerDetails}>{tower.totalFloors} Floors • {tower.totalFlats || 0} Flats</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => handleDelete(tower._id, tower.name)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+                  </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} style={{ marginLeft: Spacing.sm }} />
                 </View>
-                <View style={styles.headerText}>
-                  <Text style={styles.towerName}>Tower {tower.name}</Text>
-                  <Text style={styles.towerDetails}>{tower.totalFloors} Floors • {tower.totalFlats || 0} Flats</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
-              </View>
-            </Card>
+              </Card>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}
 
       {/* Creation Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Tower</Text>
@@ -110,7 +152,7 @@ export default function TowersScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
               <Input
                 label="Tower Name *"
                 placeholder="e.g. Tower A, Wing B"
@@ -137,7 +179,7 @@ export default function TowersScreen() {
               />
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -161,4 +203,9 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, padding: Spacing.lg, minHeight: 400, ...Shadows.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
   modalTitle: { ...Typography.h3, color: Colors.text },
+  deleteBtn: {
+    padding: Spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

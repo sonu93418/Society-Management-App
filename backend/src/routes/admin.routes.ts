@@ -16,10 +16,12 @@ router.get('/dashboard/payments', (req, res, next) => adminController.getPayment
 // Towers
 router.post('/towers', (req, res, next) => adminController.createTower(req, res, next));
 router.get('/towers', (req, res, next) => adminController.getTowers(req, res, next));
+router.delete('/towers/:id', (req, res, next) => adminController.deleteTower(req, res, next));
 
 // Flats
 router.post('/flats', (req, res, next) => adminController.createFlat(req, res, next));
 router.get('/flats', (req, res, next) => adminController.getFlats(req, res, next));
+router.delete('/flats/:id', (req, res, next) => adminController.deleteFlat(req, res, next));
 
 // Residents
 router.get('/residents', (req, res, next) => adminController.getResidents(req, res, next));

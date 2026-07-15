@@ -34,6 +34,17 @@ export const useCreateTower = () => {
   });
 };
 
+export const useDeleteTower = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteTower(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.towers });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminDashboard });
+    },
+  });
+};
+
 export const useFlats = (params?: { towerId?: string }) => {
   return useQuery({
     queryKey: [...QUERY_KEYS.flats, params],
@@ -45,6 +56,17 @@ export const useCreateFlat = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: { flatNumber: string; floor: number; towerId: string; type?: string }) => adminApi.createFlat(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.flats });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminDashboard });
+    },
+  });
+};
+
+export const useDeleteFlat = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteFlat(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.flats });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminDashboard });

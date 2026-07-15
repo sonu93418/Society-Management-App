@@ -211,6 +211,13 @@ export class AdminController {
     } catch (error) { next(error); }
   }
 
+  async deleteTower(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await adminService.deleteTower(req.params.id);
+      sendSuccess(res, 200, 'Tower deleted', result);
+    } catch (error) { next(error); }
+  }
+
   async createFlat(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const result = await adminService.createFlat({ ...req.body, societyId: req.user!.societyId });
@@ -225,6 +232,13 @@ export class AdminController {
         towerId: req.query.towerId as string,
       });
       sendSuccess(res, 200, 'Flats fetched', result);
+    } catch (error) { next(error); }
+  }
+
+  async deleteFlat(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await adminService.deleteFlat(req.params.id);
+      sendSuccess(res, 200, 'Flat deleted', result);
     } catch (error) { next(error); }
   }
 

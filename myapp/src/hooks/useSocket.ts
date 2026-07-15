@@ -8,7 +8,7 @@ import { Alert, Platform } from 'react-native';
 // Read socket URL from app.json extra config (set per environment)
 const SOCKET_URL =
   (Constants.expoConfig?.extra?.socketUrl as string | undefined) ??
-  'http://10.141.195.148:5000';
+  'http://10.181.99.148:5000';
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
@@ -43,6 +43,10 @@ export const useSocket = () => {
 
     socket.on('connect_error', (error) => {
       console.error('🔌 Socket connection error:', error.message);
+      if (error.message === 'Invalid token' || error.message === 'Authentication required') {
+        console.warn('⚠️ Stale or invalid session token detected. Logging out...');
+        useAuthStore.getState().logout().catch(console.error);
+      }
     });
 
     // Resident Event Handlers

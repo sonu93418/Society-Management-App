@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/auth.store';
 // Falls back to local LAN IP for development
 const BASE_URL =
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-  'http://10.141.195.148:5000/api/v1';
+  'http://10.181.99.148:5000/api/v1';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

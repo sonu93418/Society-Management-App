@@ -1,13 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Typography, Spacing, BorderRadius } from '../../theme';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
-import { useNotices, usePolls, useAllTickets } from '../../hooks/useCommunity';
+import { useNotices, usePolls, useAllTickets, useCreateNotice, useCreatePoll } from '../../hooks/useCommunity';
 import { ActivityIndicator, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 
@@ -16,9 +17,27 @@ export default function CommunityAdmin() {
   const { data: pollsResponse, isLoading: pollsLoading, refetch: refetchPolls } = usePolls();
   const { data: ticketsResponse, isLoading: ticketsLoading, refetch: refetchTickets } = useAllTickets();
 
+  const createNoticeMutation = useCreateNotice();
+  const createPollMutation = useCreatePoll();
+
   const notices = noticesResponse?.data?.notices || [];
   const polls = pollsResponse?.data || [];
   const tickets = ticketsResponse?.data?.tickets || [];
+
+  // Modals Visibility
+  const [noticeModalVisible, setNoticeModalVisible] = useState(false);
+  const [pollModalVisible, setPollModalVisible] = useState(false);
+
+  // Notice Form State
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeContent, setNoticeContent] = useState('');
+  const [noticePinned, setNoticePinned] = useState(false);
+
+  // Poll Form State
+  const [pollTitle, setPollTitle] = useState('');
+  const [pollDescription, setPollDescription] = useState('');
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const [pollDays, setPollDays] = useState('7');
 
   const handleRefresh = async () => {
     await Promise.all([refetchNotices(), refetchPolls(), refetchTickets()]);
@@ -42,11 +61,116 @@ export default function CommunityAdmin() {
 
   const openTickets = tickets.filter(t => t.status === 'open' || t.status === 'in_progress');
 
+  // --- Submit Handlers ---
+  const handleCreateNotice = () => {
+    if (!noticeTitle.trim() || !noticeContent.trim()) {
+      Alert.alert('Error', 'Please fill in notice title and content');
+      return;
+    }
+
+    createNoticeMutation.mutate(
+      {
+        title: noticeTitle.trim(),
+        content: noticeContent.trim(),
+        isPinned: noticePinned,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Notice published successfully!');
+          setNoticeModalVisible(false);
+          setNoticeTitle('');
+          setNoticeContent('');
+          setNoticePinned(false);
+          refetchNotices();
+        },
+        onError: (err: any) => {
+          Alert.alert('Error', err?.message || 'Failed to post notice');
+        },
+      }
+    );
+  };
+
+  const handleOptionChange = (text: string, index: number) => {
+    const updated = [...pollOptions];
+    updated[index] = text;
+    setPollOptions(updated);
+  };
+
+  const addOptionField = () => {
+    if (pollOptions.length < 5) {
+      setPollOptions([...pollOptions, '']);
+    }
+  };
+
+  const removeOptionField = (index: number) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(pollOptions.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleCreatePoll = () => {
+    if (!pollTitle.trim()) {
+      Alert.alert('Error', 'Please enter a poll question/title');
+      return;
+    }
+
+    const filteredOptions = pollOptions.map(o => o.trim()).filter(Boolean);
+    if (filteredOptions.length < 2) {
+      Alert.alert('Error', 'Please enter at least 2 non-empty options');
+      return;
+    }
+
+    const daysNum = parseInt(pollDays, 10);
+    if (isNaN(daysNum) || daysNum <= 0) {
+      Alert.alert('Error', 'Duration must be a positive number');
+      return;
+    }
+
+    const endDate = new Date(Date.now() + daysNum * 24 * 60 * 60 * 1000).toISOString();
+
+    createPollMutation.mutate(
+      {
+        title: pollTitle.trim(),
+        description: pollDescription.trim() || undefined,
+        options: filteredOptions,
+        endDate,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert('Success', 'Opinion poll created successfully!');
+          setPollModalVisible(false);
+          setPollTitle('');
+          setPollDescription('');
+          setPollOptions(['', '']);
+          setPollDays('7');
+          refetchPolls();
+        },
+        onError: (err: any) => {
+          Alert.alert('Error', err?.message || 'Failed to create poll');
+        },
+      }
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Community</Text>
-        <TouchableOpacity style={styles.addBtn}>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => {
+            Alert.alert(
+              'Create New',
+              'Choose what you want to publish to the community:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Post Notice 📢', onPress: () => setNoticeModalVisible(true) },
+                { text: 'Create Poll 🗳️', onPress: () => setPollModalVisible(true) },
+              ]
+            );
+          }}
+        >
           <Ionicons name="add" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>
@@ -58,8 +182,22 @@ export default function CommunityAdmin() {
       >
         {/* Quick Create */}
         <View style={styles.createRow}>
-          <Button title="Post Notice" variant="primary" size="sm" onPress={() => {}} icon={<Ionicons name="megaphone-outline" size={16} color={Colors.white} />} />
-          <Button title="Create Poll" variant="secondary" size="sm" onPress={() => {}} icon={<Ionicons name="bar-chart-outline" size={16} color={Colors.primary} />} />
+          <Button
+            title="Post Notice"
+            variant="primary"
+            size="sm"
+            onPress={() => setNoticeModalVisible(true)}
+            icon={<Ionicons name="megaphone-outline" size={16} color={Colors.white} />}
+            style={{ flex: 1 }}
+          />
+          <Button
+            title="Create Poll"
+            variant="secondary"
+            size="sm"
+            onPress={() => setPollModalVisible(true)}
+            icon={<Ionicons name="bar-chart-outline" size={16} color={Colors.primary} />}
+            style={{ flex: 1 }}
+          />
         </View>
 
         {/* Complaints Overview */}
@@ -136,6 +274,147 @@ export default function CommunityAdmin() {
 
         <View style={{ height: Spacing['5xl'] }} />
       </ScrollView>
+
+      {/* --- NOTICE CREATION MODAL --- */}
+      <Modal visible={noticeModalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Post New Notice</Text>
+              <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Input
+                label="Title *"
+                placeholder="Notice headline"
+                value={noticeTitle}
+                onChangeText={setNoticeTitle}
+                leftIcon="document-text-outline"
+              />
+
+              <Input
+                label="Content *"
+                placeholder="Write notice description..."
+                value={noticeContent}
+                onChangeText={setNoticeContent}
+                multiline
+                numberOfLines={5}
+                style={{ minHeight: 120, textAlignVertical: 'top' }}
+              />
+
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={styles.switchLabel}>Pin to Top</Text>
+                  <Text style={styles.switchDesc}>Keep notice highlighted at community banner</Text>
+                </View>
+                <Switch
+                  value={noticePinned}
+                  onValueChange={setNoticePinned}
+                  trackColor={{ false: Colors.border, true: Colors.danger }}
+                  thumbColor={Colors.white}
+                />
+              </View>
+
+              <Button
+                title="Publish Notice"
+                onPress={handleCreateNotice}
+                loading={createNoticeMutation.isPending}
+                fullWidth
+                style={{ marginTop: Spacing['2xl'] }}
+                icon={<Ionicons name="send" size={20} color={Colors.white} />}
+              />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* --- POLL CREATION MODAL --- */}
+      <Modal visible={pollModalVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create Opinion Poll</Text>
+              <TouchableOpacity onPress={() => setPollModalVisible(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Input
+                label="Question / Title *"
+                placeholder="e.g. Should we install EV charging stations?"
+                value={pollTitle}
+                onChangeText={setPollTitle}
+                leftIcon="help-circle-outline"
+              />
+
+              <Input
+                label="Description (Optional)"
+                placeholder="Details or cost estimates of the proposal"
+                value={pollDescription}
+                onChangeText={setPollDescription}
+                multiline
+                numberOfLines={3}
+                style={{ minHeight: 70, textAlignVertical: 'top' }}
+              />
+
+              <Text style={styles.fieldLabel}>Poll Options (Min. 2, Max. 5)</Text>
+              {pollOptions.map((option, idx) => (
+                <View key={idx} style={styles.optionInputRow}>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      placeholder={`Option ${idx + 1}`}
+                      value={option}
+                      onChangeText={(text) => handleOptionChange(text, idx)}
+                      containerStyle={{ marginBottom: 0 }}
+                    />
+                  </View>
+                  {pollOptions.length > 2 && (
+                    <TouchableOpacity style={styles.optionRemoveBtn} onPress={() => removeOptionField(idx)}>
+                      <Ionicons name="remove-circle-outline" size={24} color={Colors.danger} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+
+              {pollOptions.length < 5 && (
+                <TouchableOpacity style={styles.addOptionBtn} onPress={addOptionField}>
+                  <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
+                  <Text style={styles.addOptionText}>Add Option</Text>
+                </TouchableOpacity>
+              )}
+
+              <Input
+                label="Duration (in Days) *"
+                placeholder="e.g. 7"
+                keyboardType="numeric"
+                value={pollDays}
+                onChangeText={setPollDays}
+                leftIcon="time-outline"
+                containerStyle={{ marginTop: Spacing.md }}
+              />
+
+              <Button
+                title="Create Poll"
+                onPress={handleCreatePoll}
+                loading={createPollMutation.isPending}
+                fullWidth
+                style={{ marginTop: Spacing['2xl'] }}
+                icon={<Ionicons name="send" size={20} color={Colors.white} />}
+              />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -163,4 +442,20 @@ const styles = StyleSheet.create({
   pollStats: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.sm, gap: Spacing.sm },
   pollStat: { ...Typography.caption, color: Colors.textSecondary },
   pollDot: { color: Colors.textTertiary },
+
+  // Modals Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, padding: Spacing.lg, maxHeight: '85%', ...Shadows.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
+  modalTitle: { ...Typography.h3, color: Colors.text },
+
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: Spacing.md, paddingVertical: Spacing.xs },
+  switchLabel: { ...Typography.bodyMedium, color: Colors.text },
+  switchDesc: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
+
+  fieldLabel: { ...Typography.label, color: Colors.text, marginBottom: Spacing.sm },
+  optionInputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+  optionRemoveBtn: { padding: Spacing.xs, justifyContent: 'center', alignItems: 'center' },
+  addOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.xs, marginTop: Spacing.xs },
+  addOptionText: { ...Typography.bodySm, color: Colors.primary, fontWeight: '600' },
 });

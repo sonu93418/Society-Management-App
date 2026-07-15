@@ -69,6 +69,16 @@ export class AdminService {
     return Tower.find({ society: societyId, isActive: true }).sort({ name: 1 });
   }
 
+  async deleteTower(towerId: string) {
+    const tower = await Tower.findByIdAndUpdate(towerId, { isActive: false }, { new: true });
+    if (!tower) {
+      throw new AppError('Tower not found', 404);
+    }
+    // Also mark all flats in this tower as inactive
+    await Flat.updateMany({ tower: towerId }, { isActive: false });
+    return tower;
+  }
+
   // Flat management
   async createFlat(data: { flatNumber: string; floor: number; towerId: string; type?: string; area?: number; societyId: string }) {
     const flat = await Flat.create({
@@ -91,6 +101,14 @@ export class AdminService {
       .populate('tower', 'name')
       .populate('residents', 'name phone email')
       .sort({ flatNumber: 1 });
+  }
+
+  async deleteFlat(flatId: string) {
+    const flat = await Flat.findByIdAndUpdate(flatId, { isActive: false }, { new: true });
+    if (!flat) {
+      throw new AppError('Flat not found', 404);
+    }
+    return flat;
   }
 
   // Resident management
