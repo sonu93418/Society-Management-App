@@ -17,10 +17,10 @@ export default function ProfileScreen() {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
-          logout();
-          router.replace('/(auth)/login');
-        },
+        // logout() is async — clears SecureStore then updates state.
+        // AuthGate in _layout.tsx automatically navigates to login
+        // when isAuthenticated becomes false, so no manual navigation needed.
+        onPress: () => { logout().catch(console.error); },
       },
     ]);
   };

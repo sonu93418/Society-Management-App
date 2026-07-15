@@ -47,4 +47,9 @@ export const authApi = {
     const res = await apiClient.get<ApiResponse<User>>('/auth/profile');
     return res.data;
   },
+
+  updatePushToken: async (pushToken: string | null) => {
+    const res = await apiClient.put<ApiResponse>('/auth/push-token', { pushToken });
+    return res.data;
+  },
 };

@@ -179,6 +179,10 @@ export class AuthService {
 
     return user;
   }
+
+  async updatePushToken(userId: string, pushToken: string | undefined) {
+    await User.findByIdAndUpdate(userId, { pushToken });
+  }
 }
 
 export const authService = new AuthService();

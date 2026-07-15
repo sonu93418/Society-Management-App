@@ -1,9 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import Constants from 'expo-constants';
 import { useAuthStore } from '../store/auth.store';
 
-const BASE_URL = 'http://10.141.195.148:5000/api/v1'; // Local Wi-Fi LAN IP
-// const BASE_URL = 'http://10.0.2.2:5000/api/v1'; // Android emulator
-// const BASE_URL = 'http://localhost:5000/api/v1'; // iOS simulator
+// Read the API URL from app.json extra config (set per environment)
+// Falls back to local LAN IP for development
+const BASE_URL =
+  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
+  'http://10.141.195.148:5000/api/v1';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -38,7 +41,7 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = useAuthStore.getState().refreshToken;
         if (!refreshToken) {
-          useAuthStore.getState().logout();
+          await useAuthStore.getState().logout();
           return Promise.reject(error);
         }
 
@@ -52,7 +55,7 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(originalRequest);
       } catch {
-        useAuthStore.getState().logout();
+        await useAuthStore.getState().logout();
         return Promise.reject(error);
       }
     }

@@ -3,10 +3,14 @@ import app from './app';
 import { env } from './config/env';
 import { connectDatabase } from './config/database';
 import { initializeSocket } from './socket';
+import { initializeFirebase } from './config/firebase';
 import { logger } from './utils/logger';
 
 const startServer = async (): Promise<void> => {
   try {
+    // Initialize Firebase Admin SDK (for push notifications)
+    initializeFirebase();
+
     // Connect to MongoDB
     await connectDatabase();
 

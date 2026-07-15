@@ -55,7 +55,7 @@ export default function RegisterScreen() {
       });
       if (response.success && response.data) {
         const { user, accessToken, refreshToken } = response.data;
-        setAuth({ ...user, id: user.id || (user as any)._id }, accessToken, refreshToken);
+        await setAuth({ ...user, id: user.id || (user as any)._id }, accessToken, refreshToken);
         router.replace(selectedRole === 'guard' ? '/(guard)' : '/(resident)');
       }
     } catch (error) {

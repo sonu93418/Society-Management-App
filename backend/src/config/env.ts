@@ -14,6 +14,10 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:8081'),
   RATE_LIMIT_WINDOW_MS: z.string().default('900000').transform(Number),
   RATE_LIMIT_MAX: z.string().default('100').transform(Number),
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

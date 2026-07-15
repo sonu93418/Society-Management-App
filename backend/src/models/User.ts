@@ -12,6 +12,7 @@ export interface IUser extends Document {
   avatar?: string;
   isActive: boolean;
   refreshToken?: string;
+  pushToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,6 +67,9 @@ const userSchema = new Schema<IUser>(
     refreshToken: {
       type: String,
       select: false,
+    },
+    pushToken: {
+      type: String,
     },
   },
   {

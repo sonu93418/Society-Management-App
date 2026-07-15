@@ -49,6 +49,16 @@ export class AuthController {
       next(error);
     }
   }
+
+  async updatePushToken(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { pushToken } = req.body;
+      await authService.updatePushToken(req.user!.userId, pushToken);
+      sendSuccess(res, 200, 'Push token updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

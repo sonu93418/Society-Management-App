@@ -1,10 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import Constants from 'expo-constants';
 import { useAuthStore } from '../store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Platform } from 'react-native';
 
-const SOCKET_URL = 'http://10.141.195.148:5000'; // Match backend local LAN IP
+// Read socket URL from app.json extra config (set per environment)
+const SOCKET_URL =
+  (Constants.expoConfig?.extra?.socketUrl as string | undefined) ??
+  'http://10.141.195.148:5000';
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);

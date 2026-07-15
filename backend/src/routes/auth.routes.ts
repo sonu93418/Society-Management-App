@@ -12,5 +12,6 @@ router.post('/login', authLimiter, validate(loginSchema), (req, res, next) => au
 router.post('/refresh-token', validate(refreshTokenSchema), (req, res, next) => authController.refreshToken(req, res, next));
 router.post('/logout', authenticate, (req, res, next) => authController.logout(req, res, next));
 router.get('/profile', authenticate, (req, res, next) => authController.getProfile(req, res, next));
+router.put('/push-token', authenticate, (req, res, next) => authController.updatePushToken(req, res, next));
 
 export default router;

@@ -40,7 +40,7 @@ export default function LoginScreen() {
       const response = await authApi.login({ email: email.trim().toLowerCase(), password });
       if (response.success && response.data) {
         const { user, accessToken, refreshToken } = response.data;
-        setAuth({ ...user, id: user.id || (user as any)._id }, accessToken, refreshToken);
+        await setAuth({ ...user, id: user.id || (user as any)._id }, accessToken, refreshToken);
 
         // Haptic feedback on success
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
