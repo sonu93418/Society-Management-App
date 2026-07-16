@@ -86,4 +86,10 @@ export const visitorApi = {
     const res = await apiClient.get<ApiResponse<VisitorStats>>('/visitors/stats');
     return res.data;
   },
+
+  // Delete visitor request
+  delete: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<VisitorRequest>>(`/visitors/${id}`);
+    return res.data;
+  },
 };

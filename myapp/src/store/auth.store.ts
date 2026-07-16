@@ -64,7 +64,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ accessToken, refreshToken });
   },
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    SecureStore.setItemAsync(KEYS.USER, JSON.stringify(user)).catch(() => {});
+    set({ user });
+  },
 
   setLoading: (isLoading) => set({ isLoading }),
 

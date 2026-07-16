@@ -130,6 +130,19 @@ export class VisitorController {
       next(error);
     }
   }
+
+  async delete(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await visitorService.deleteVisitorRequest(
+        req.params.id,
+        req.user!.userId,
+        req.user!.role
+      );
+      sendSuccess(res, 200, 'Visitor request deleted successfully', result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const visitorController = new VisitorController();

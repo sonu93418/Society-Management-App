@@ -27,5 +27,6 @@ router.get('/pending', authorize(UserRole.RESIDENT), (req, res, next) => visitor
 // Shared endpoints
 router.get('/history', (req, res, next) => visitorController.getHistory(req, res, next));
 router.get('/stats', authorize(UserRole.GUARD, UserRole.ADMIN), (req, res, next) => visitorController.getStats(req, res, next));
+router.delete('/:id', (req, res, next) => visitorController.delete(req, res, next));
 
 export default router;

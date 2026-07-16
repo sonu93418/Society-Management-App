@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { noticeApi, pollApi, ticketApi, amenityApi, paymentApi, staffApi, guardApi } from '../api/community.api';
+import { noticeApi, pollApi, ticketApi, amenityApi, paymentApi, staffApi, guardApi, notificationApi } from '../api/community.api';
 
 const QUERY_KEYS = {
   notices: ['notices'] as const,
@@ -109,6 +109,16 @@ export const useCreateNotice = () => {
   });
 };
 
+export const useDeleteNotice = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => noticeApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notices });
+    },
+  });
+};
+
 export const useCreatePoll = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -197,4 +207,32 @@ export const useGuardSearchResidents = (query: string) => {
      enabled: query.trim().length >= 2,
    });
  };
+
+// --- Notifications ---
+export const useNotifications = (params?: { page?: number }) => {
+  return useQuery({
+    queryKey: ['notifications', params],
+    queryFn: () => notificationApi.getAll(params),
+  });
+};
+
+export const useMarkNotificationRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => notificationApi.markRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+};
+
+export const useMarkAllNotificationsRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => notificationApi.markAllRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+};
 

@@ -11,6 +11,7 @@ import type { Amenity } from '../../types/models';
 
 import { useAmenities, useBookAmenity, useBookings, useCancelBooking } from '../../hooks/useCommunity';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { getApiError } from '../../api/client';
 
 const timeSlots = [
   '06:00 - 07:00', '07:00 - 08:00', '08:00 - 09:00', '09:00 - 10:00',
@@ -83,7 +84,7 @@ export default function AmenitiesScreen() {
                   refetchBookings();
                 },
                 onError: (err: any) => {
-                  Alert.alert('Error', err?.message || 'Failed to cancel booking');
+                  Alert.alert('Error', getApiError(err));
                 },
               }
             );
@@ -123,7 +124,7 @@ export default function AmenitiesScreen() {
           );
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to book amenity');
+          Alert.alert('Error', getApiError(err));
         },
       }
     );

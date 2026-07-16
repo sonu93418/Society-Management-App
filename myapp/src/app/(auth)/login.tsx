@@ -9,7 +9,11 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+const splashPoster = require('../../../assets/images/splash_poster.png');
+const appLogo = require('../../../assets/images/logo.png');
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +30,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showShowcase, setShowShowcase] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const handleLogin = async () => {
@@ -76,7 +81,8 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <StatusBar style="dark" />
       <ScrollView
@@ -86,13 +92,17 @@ export default function LoginScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoIcon}>
-              <Ionicons name="shield-checkmark" size={36} color={Colors.white} />
-            </View>
-          </View>
+          <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.appName}>Portl</Text>
           <Text style={styles.tagline}>Your society, one tap away</Text>
+
+          <TouchableOpacity
+            style={styles.showcaseBtn}
+            onPress={() => setShowShowcase(true)}
+          >
+            <Ionicons name="sparkles" size={14} color={Colors.primary} style={{ marginRight: 6 }} />
+            <Text style={styles.showcaseBtnText}>See what's new in Portl</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Form */}
@@ -119,6 +129,13 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             isPassword
           />
+
+          <TouchableOpacity
+            style={styles.forgotBtn}
+            onPress={() => router.push('/(auth)/forgot-password')}
+          >
+            <Text style={styles.forgotText}>Forgot Password?</Text>
+          </TouchableOpacity>
 
           <Button
             title="Sign In"
@@ -168,6 +185,101 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showShowcase}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowShowcase(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Explore Portl</Text>
+              <TouchableOpacity
+                onPress={() => setShowShowcase(false)}
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+              <View style={styles.imageContainer}>
+                <Image
+                  source={splashPoster}
+                  style={styles.posterImage}
+                  resizeMode="cover"
+                />
+              </View>
+
+              <Text style={styles.showcaseHeader}>Smart Living, Unified</Text>
+              <Text style={styles.showcaseSub}>
+                Manage your home and stay connected with your community on India's most secure society management portal.
+              </Text>
+
+              {/* Feature Items */}
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <View style={[styles.featureIconContainer, { backgroundColor: '#EEF2FF' }]}>
+                    <Ionicons name="shield-checkmark" size={22} color={Colors.primary} />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <Text style={styles.featureTitle}>Gate Security & Pre-Approve</Text>
+                    <Text style={styles.featureDescription}>
+                      Pre-register visitors, service providers, and get real-time approvals for visitor entry.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.featureItem}>
+                  <View style={[styles.featureIconContainer, { backgroundColor: '#FFF7ED' }]}>
+                    <Ionicons name="megaphone" size={22} color={Colors.warning} />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <Text style={styles.featureTitle}>Notices & Interactive Polls</Text>
+                    <Text style={styles.featureDescription}>
+                      Stay updated with official broadcasts and cast your vote on community decisions.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.featureItem}>
+                  <View style={[styles.featureIconContainer, { backgroundColor: '#ECFDF5' }]}>
+                    <Ionicons name="cash" size={22} color={Colors.success} />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <Text style={styles.featureTitle}>Bills & Amenities Booking</Text>
+                    <Text style={styles.featureDescription}>
+                      Pay maintenance invoices directly and book society clubhouses, pools, or halls.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.featureItem}>
+                  <View style={[styles.featureIconContainer, { backgroundColor: '#F0F9FF' }]}>
+                    <Ionicons name="construct" size={22} color="#0284C7" />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <Text style={styles.featureTitle}>Digital Helpdesk Tickets</Text>
+                    <Text style={styles.featureDescription}>
+                      File requests for plumbing, electrical, or generic issues and track updates instantly.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <Button
+                title="Get Started"
+                onPress={() => setShowShowcase(false)}
+                fullWidth
+                size="lg"
+                style={{ marginTop: Spacing.xl, marginBottom: Spacing['2xl'] }}
+              />
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -189,6 +301,13 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: Spacing.lg,
+  },
+  logoImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    marginBottom: Spacing.lg,
+    ...Shadows.lg,
   },
   logoIcon: {
     width: 72,
@@ -230,6 +349,16 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xl,
     alignItems: 'center',
   },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginBottom: Spacing.xl,
+    marginTop: -Spacing.xs,
+  },
+  forgotText: {
+    ...Typography.bodySm,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
   registerText: {
     ...Typography.body,
     color: Colors.textSecondary,
@@ -263,5 +392,109 @@ const styles = StyleSheet.create({
   },
   demoButtonText: {
     ...Typography.captionMedium,
+  },
+  showcaseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.md,
+    alignSelf: 'center',
+  },
+  showcaseBtnText: {
+    ...Typography.captionMedium,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    height: '92%',
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: BorderRadius['3xl'],
+    borderTopRightRadius: BorderRadius['3xl'],
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  modalTitle: {
+    ...Typography.h3,
+    color: Colors.text,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScroll: {
+    padding: Spacing.xl,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 240,
+    borderRadius: BorderRadius['2xl'],
+    overflow: 'hidden',
+    marginBottom: Spacing.lg,
+    ...Shadows.md,
+  },
+  posterImage: {
+    width: '100%',
+    height: '100%',
+  },
+  showcaseHeader: {
+    ...Typography.h2,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  showcaseSub: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.xl,
+    paddingHorizontal: Spacing.sm,
+  },
+  featureList: {
+    gap: Spacing.lg,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  featureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureTextContainer: {
+    flex: 1,
+  },
+  featureTitle: {
+    ...Typography.bodyMedium,
+    color: Colors.text,
+    fontWeight: '700',
+  },
+  featureDescription: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
   },
 });

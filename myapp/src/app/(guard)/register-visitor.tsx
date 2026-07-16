@@ -11,6 +11,7 @@ import { useGuardSearchResidents } from '../../hooks/useCommunity';
 import { useCreateVisitor } from '../../hooks/useVisitors';
 import { ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { getApiError } from '../../api/client';
 
 export default function RegisterVisitor() {
   const [visitorName, setVisitorName] = useState('');
@@ -75,7 +76,7 @@ export default function RegisterVisitor() {
           setSearchQuery('');
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to register visitor');
+          Alert.alert('Error', getApiError(err));
         },
       }
     );
@@ -85,7 +86,8 @@ export default function RegisterVisitor() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 90}
       >
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Register Visitor</Text>
@@ -94,7 +96,7 @@ export default function RegisterVisitor() {
         <Card style={styles.searchCard}>
           <Text style={styles.cardTitle}>Search Resident</Text>
           <Input
-            placeholder="Search by name, flat, or phone"
+            placeholder="Search by name, phone, or flat (e.g. A-101)"
             leftIcon="search-outline"
             value={searchQuery}
             onChangeText={setSearchQuery}

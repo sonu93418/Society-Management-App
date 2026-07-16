@@ -18,6 +18,7 @@ const visitorTypes = [
 import { useAuthStore } from '../../store/auth.store';
 import { usePreApproveVisitor } from '../../hooks/useVisitors';
 import { ActivityIndicator, Share, Image } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 export default function PreApproveScreen() {
   const user = useAuthStore((s) => s.user);
@@ -215,13 +216,19 @@ export default function PreApproveScreen() {
           {visitorTypes.map((type) => (
             <TouchableOpacity
               key={type.key}
-              style={[styles.typeCard, selectedType === type.key && { borderColor: type.color, borderWidth: 2, backgroundColor: type.bg }]}
-              onPress={() => setSelectedType(type.key)}
+              style={[
+                styles.typeCard,
+                selectedType === type.key && { borderColor: type.color, backgroundColor: type.color }
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedType(type.key);
+              }}
             >
-              <View style={[styles.typeIcon, { backgroundColor: selectedType === type.key ? type.color : type.bg }]}>
+              <View style={[styles.typeIcon, { backgroundColor: selectedType === type.key ? 'rgba(255, 255, 255, 0.25)' : type.bg }]}>
                 <Ionicons name={type.icon} size={20} color={selectedType === type.key ? Colors.white : type.color} />
               </View>
-              <Text style={[styles.typeLabel, selectedType === type.key && { color: type.color, fontWeight: '600' }]}>{type.label}</Text>
+              <Text style={[styles.typeLabel, selectedType === type.key && { color: Colors.white, fontWeight: '700' }]}>{type.label}</Text>
             </TouchableOpacity>
           ))}
         </View>

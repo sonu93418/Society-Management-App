@@ -59,6 +59,36 @@ export class AuthController {
       next(error);
     }
   }
+
+  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, phone } = req.body;
+      const result = await authService.forgotPassword(email, phone);
+      sendSuccess(res, 200, 'Password reset verification token generated', result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email, resetToken, newPassword } = req.body;
+      const result = await authService.resetPassword(email, resetToken, newPassword);
+      sendSuccess(res, 200, 'Password reset successful', result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assignFlat(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { flatId } = req.body;
+      const user = await authService.assignFlat(req.user!.userId, flatId);
+      sendSuccess(res, 200, 'Flat assigned successfully', user);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

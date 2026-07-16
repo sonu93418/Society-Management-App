@@ -149,8 +149,8 @@ export default function TowersScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Add New Tower</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={Colors.text} />
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={Colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -206,6 +206,14 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, padding: Spacing.lg, minHeight: 400, ...Shadows.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
   modalTitle: { ...Typography.h3, color: Colors.text },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   deleteBtn: {
     padding: Spacing.xs,
     justifyContent: 'center',

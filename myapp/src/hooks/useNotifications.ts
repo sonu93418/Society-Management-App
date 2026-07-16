@@ -10,6 +10,9 @@ import { useQueryClient } from '@tanstack/react-query';
 // Track whether the handler has been configured yet (module-level singleton flag)
 let notificationHandlerConfigured = false;
 
+// Track the last successfully registered token to avoid redundant API updates on re-render/re-mount
+let lastRegisteredPushToken: string | null = null;
+
 export const useNotifications = () => {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.accessToken);
@@ -42,8 +45,13 @@ export const useNotifications = () => {
     registerForPushNotificationsAsync()
       .then(async (pushToken) => {
         if (pushToken) {
+          if (pushToken === lastRegisteredPushToken) {
+            console.log('📱 Push token already registered in this session, skipping API call');
+            return;
+          }
           try {
             await authApi.updatePushToken(pushToken);
+            lastRegisteredPushToken = pushToken;
             console.log('📱 Push token registered with backend:', pushToken);
           } catch (err) {
             console.error('❌ Failed to register push token with backend:', err);

@@ -52,4 +52,19 @@ export const authApi = {
     const res = await apiClient.put<ApiResponse>('/auth/push-token', { pushToken });
     return res.data;
   },
+
+  forgotPassword: async (email: string, phone: string) => {
+    const res = await apiClient.post<ApiResponse<{ resetToken: string }>>('/auth/forgot-password', { email, phone });
+    return res.data;
+  },
+
+  resetPassword: async (email: string, resetToken: string, newPassword: string) => {
+    const res = await apiClient.post<ApiResponse>('/auth/reset-password', { email, resetToken, newPassword });
+    return res.data;
+  },
+
+  assignFlat: async (flatId: string) => {
+    const res = await apiClient.put<ApiResponse<User>>('/auth/assign-flat', { flatId });
+    return res.data;
+  },
 };

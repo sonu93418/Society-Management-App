@@ -8,6 +8,7 @@ export const createTicketSchema = z.object({
     category: z.nativeEnum(TicketCategory),
     priority: z.nativeEnum(TicketPriority).optional(),
     images: z.array(z.string()).max(5).optional(),
+    flatId: z.string().optional(),
   }),
 });
 

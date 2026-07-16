@@ -26,6 +26,7 @@ router.delete('/flats/:id', (req, res, next) => adminController.deleteFlat(req, 
 // Residents
 router.get('/residents', (req, res, next) => adminController.getResidents(req, res, next));
 router.get('/residents/search', (req, res, next) => adminController.searchResidents(req, res, next));
+router.put('/residents/assign-flat', (req, res, next) => adminController.assignFlatToResident(req, res, next));
 
 // Staff
 router.post('/staff', (req, res, next) => adminController.createStaff(req, res, next));

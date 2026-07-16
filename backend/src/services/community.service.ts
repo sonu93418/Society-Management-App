@@ -33,6 +33,14 @@ export class NoticeService {
   async markRead(noticeId: string, userId: string) {
     await Notice.findByIdAndUpdate(noticeId, { $addToSet: { readBy: userId } });
   }
+
+  async delete(noticeId: string) {
+    const notice = await Notice.findByIdAndDelete(noticeId);
+    if (!notice) {
+      throw new AppError('Notice not found', 404);
+    }
+    return notice;
+  }
 }
 
 // ========== POLL SERVICE ==========

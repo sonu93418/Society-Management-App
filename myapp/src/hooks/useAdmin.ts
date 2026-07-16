@@ -45,10 +45,11 @@ export const useDeleteTower = () => {
   });
 };
 
-export const useFlats = (params?: { towerId?: string }) => {
+export const useFlats = (params?: { towerId?: string }, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: [...QUERY_KEYS.flats, params],
     queryFn: () => adminApi.getFlats(params),
+    enabled: options?.enabled !== undefined ? options.enabled : true,
   });
 };
 
@@ -86,6 +87,18 @@ export const useSearchResidents = (query: string) => {
     queryKey: ['residents', 'search', query] as const,
     queryFn: () => adminApi.searchResidents(query),
     enabled: query.trim().length >= 2,
+  });
+};
+
+export const useAssignFlatToResident = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { residentId: string; flatId: string }) =>
+      adminApi.assignFlatToResident(data.residentId, data.flatId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.residents });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminDashboard });
+    },
   });
 };
 

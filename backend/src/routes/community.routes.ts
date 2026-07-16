@@ -21,6 +21,7 @@ router.post('/tickets/:id/reply', validate(replyTicketSchema), (req, res, next) 
 router.post('/notices', authorize(UserRole.ADMIN), validate(createNoticeSchema), (req, res, next) => noticeController.create(req, res, next));
 router.get('/notices', (req, res, next) => noticeController.getAll(req, res, next));
 router.put('/notices/:id/read', (req, res, next) => noticeController.markRead(req, res, next));
+router.delete('/notices/:id', authorize(UserRole.ADMIN), (req, res, next) => noticeController.delete(req, res, next));
 
 // ========== POLLS ==========
 router.post('/polls', authorize(UserRole.ADMIN), validate(createPollSchema), (req, res, next) => pollController.create(req, res, next));
@@ -45,5 +46,9 @@ router.put('/notifications/read-all', (req, res, next) => adminController.markAl
 
 // ========== STAFF ==========
 router.get('/staff', (req, res, next) => adminController.getStaff(req, res, next));
+
+// ========== PUBLIC TOWERS & FLATS FOR RESIDENT FLOWS ==========
+router.get('/towers', (req, res, next) => adminController.getTowers(req, res, next));
+router.get('/flats', (req, res, next) => adminController.getFlats(req, res, next));
 
 export default router;

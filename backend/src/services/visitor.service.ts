@@ -3,7 +3,7 @@ import { Flat } from '../models/Flat';
 import { User } from '../models/User';
 import { Notification } from '../models/Notification';
 import { AppError } from '../utils/response';
-import { VisitorStatus, VisitorType, NotificationType } from '../constants';
+import { VisitorStatus, VisitorType, NotificationType, UserRole } from '../constants';
 import crypto from 'crypto';
 
 interface CreateVisitorInput {
@@ -278,6 +278,19 @@ export class VisitorService {
     ]);
 
     return { total, pending, inside, approved };
+  }
+
+  async deleteVisitorRequest(id: string, userId: string, role: string) {
+    const visitor = await VisitorRequest.findById(id);
+    if (!visitor) {
+      throw new AppError('Visitor record not found', 404);
+    }
+    // Residents can only delete their own visitor history
+    if (role === UserRole.RESIDENT && visitor.resident.toString() !== userId) {
+      throw new AppError('Unauthorized to delete this visitor record', 403);
+    }
+    await VisitorRequest.findByIdAndDelete(id);
+    return visitor;
   }
 }
 

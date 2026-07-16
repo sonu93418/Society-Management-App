@@ -89,6 +89,13 @@ export class NoticeController {
       sendSuccess(res, 200, 'Notice marked as read');
     } catch (error) { next(error); }
   }
+
+  async delete(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const result = await noticeService.delete(req.params.id);
+      sendSuccess(res, 200, 'Notice deleted successfully', result);
+    } catch (error) { next(error); }
+  }
 }
 
 // ========== POLL CONTROLLER ==========
@@ -311,6 +318,14 @@ export class AdminController {
     try {
       const result = await paymentService.getStats(req.user!.societyId);
       sendSuccess(res, 200, 'Payment stats fetched', result);
+    } catch (error) { next(error); }
+  }
+
+  async assignFlatToResident(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { residentId, flatId } = req.body;
+      const result = await adminService.assignFlatToResident(residentId, flatId);
+      sendSuccess(res, 200, 'Flat assigned to resident successfully', result);
     } catch (error) { next(error); }
   }
 }

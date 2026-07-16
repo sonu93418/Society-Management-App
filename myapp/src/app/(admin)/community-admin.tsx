@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
-import { useNotices, usePolls, useAllTickets, useCreateNotice, useCreatePoll } from '../../hooks/useCommunity';
+import { useNotices, usePolls, useAllTickets, useCreateNotice, useCreatePoll, useDeleteNotice } from '../../hooks/useCommunity';
 import { ActivityIndicator, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { getApiError } from '../../api/client';
@@ -20,6 +21,33 @@ export default function CommunityAdmin() {
 
   const createNoticeMutation = useCreateNotice();
   const createPollMutation = useCreatePoll();
+  const deleteNoticeMutation = useDeleteNotice();
+
+  const handleDeleteNotice = (noticeId: string) => {
+    Alert.alert(
+      'Delete Notice',
+      'Are you sure you want to delete this notice? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            deleteNoticeMutation.mutate(noticeId, {
+               onSuccess: () => {
+                 Alert.alert('Success', 'Notice deleted successfully');
+                 refetchNotices();
+               },
+               onError: (err) => {
+                 Alert.alert('Error', getApiError(err));
+               }
+            });
+          }
+        }
+      ]
+    );
+  };
 
   const notices = noticesResponse?.data?.notices || [];
   const polls = pollsResponse?.data || [];
@@ -245,7 +273,13 @@ export default function CommunityAdmin() {
                   <Text style={styles.noticeTitle}>{notice.title}</Text>
                   <Text style={styles.noticeMeta}>{formatTime(notice.createdAt)}</Text>
                 </View>
-                {notice.isPinned && <Badge label="Pinned" variant="danger" size="sm" />}
+                {notice.isPinned && <Badge label="Pinned" variant="danger" size="sm" style={{ marginRight: Spacing.sm }} />}
+                <TouchableOpacity
+                  onPress={() => handleDeleteNotice(notice._id)}
+                  style={styles.deleteNoticeBtn}
+                >
+                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+                </TouchableOpacity>
               </View>
             </Card>
           ))
@@ -286,8 +320,8 @@ export default function CommunityAdmin() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Post New Notice</Text>
-                <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={Colors.text} />
+                <TouchableOpacity onPress={() => setNoticeModalVisible(false)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={Colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -347,8 +381,8 @@ export default function CommunityAdmin() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Create Opinion Poll</Text>
-                <TouchableOpacity onPress={() => setPollModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={Colors.text} />
+                <TouchableOpacity onPress={() => setPollModalVisible(false)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={Colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -453,6 +487,14 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl, padding: Spacing.lg, maxHeight: '85%', ...Shadows.lg },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
   modalTitle: { ...Typography.h3, color: Colors.text },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: Spacing.md, paddingVertical: Spacing.xs },
   switchLabel: { ...Typography.bodyMedium, color: Colors.text },
@@ -463,4 +505,9 @@ const styles = StyleSheet.create({
   optionRemoveBtn: { padding: Spacing.xs, justifyContent: 'center', alignItems: 'center' },
   addOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.xs, marginTop: Spacing.xs },
   addOptionText: { ...Typography.bodySm, color: Colors.primary, fontWeight: '600' },
+  deleteNoticeBtn: {
+    padding: Spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

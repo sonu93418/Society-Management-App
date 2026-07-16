@@ -3,7 +3,7 @@ import { authController } from '../controllers/auth.controller';
 import { validate } from '../middlewares/validate.middleware';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authLimiter } from '../middlewares/rateLimiter.middleware';
-import { registerSchema, loginSchema, refreshTokenSchema } from '../validators/auth.validator';
+import { registerSchema, loginSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from '../validators/auth.validator';
 
 const router = Router();
 
@@ -13,5 +13,12 @@ router.post('/refresh-token', validate(refreshTokenSchema), (req, res, next) => 
 router.post('/logout', authenticate, (req, res, next) => authController.logout(req, res, next));
 router.get('/profile', authenticate, (req, res, next) => authController.getProfile(req, res, next));
 router.put('/push-token', authenticate, (req, res, next) => authController.updatePushToken(req, res, next));
+
+// Password Reset Routes (unauthenticated)
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), (req, res, next) => authController.forgotPassword(req, res, next));
+router.post('/reset-password', authLimiter, validate(resetPasswordSchema), (req, res, next) => authController.resetPassword(req, res, next));
+
+// Flat Assignment Route (authenticated)
+router.put('/assign-flat', authenticate, (req, res, next) => authController.assignFlat(req, res, next));
 
 export default router;

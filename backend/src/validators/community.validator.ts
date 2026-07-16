@@ -45,7 +45,7 @@ export const createAmenitySchema = z.object({
 export const createBookingSchema = z.object({
   body: z.object({
     amenityId: z.string().min(1, 'Amenity ID is required'),
-    date: z.string().datetime('Valid date required'),
+    date: z.string().min(1, 'Date is required'),
     startTime: z.string().min(1, 'Start time is required'),
     endTime: z.string().min(1, 'End time is required'),
     numberOfPeople: z.number().min(1).max(50).optional(),

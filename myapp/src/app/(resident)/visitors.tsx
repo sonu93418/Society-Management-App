@@ -8,18 +8,46 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 
 import { router } from 'expo-router';
-import { usePendingVisitors, useMyVisitors, useApproveVisitor, useRejectVisitor } from '../../hooks/useVisitors';
+import { usePendingVisitors, useMyVisitors, useApproveVisitor, useRejectVisitor, useDeleteVisitor } from '../../hooks/useVisitors';
 import { ActivityIndicator, Alert } from 'react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import * as Haptics from 'expo-haptics';
 
 export default function ResidentVisitors() {
-  const { data: pendingResponse, isLoading: isPendingLoading } = usePendingVisitors();
-  const { data: historyResponse, isLoading: isHistoryLoading } = useMyVisitors();
+  const { data: pendingResponse, isLoading: isPendingLoading, refetch: refetchPending } = usePendingVisitors();
+  const { data: historyResponse, isLoading: isHistoryLoading, refetch: refetchHistory } = useMyVisitors();
   
   const approveMutation = useApproveVisitor();
   const rejectMutation = useRejectVisitor();
+  const deleteVisitorMutation = useDeleteVisitor();
+
+  const handleDeleteVisitor = (id: string, name: string) => {
+    Alert.alert(
+      'Delete Visitor',
+      `Are you sure you want to delete the visitor record for ${name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            deleteVisitorMutation.mutate(id, {
+              onSuccess: () => {
+                Alert.alert('Success', 'Visitor record deleted successfully');
+                refetchPending();
+                refetchHistory();
+              },
+              onError: (err: any) => {
+                Alert.alert('Error', err?.message || 'Failed to delete visitor');
+              },
+            });
+          },
+        },
+      ]
+    );
+  };
 
   const pendingVisitors = pendingResponse?.data || [];
   const historyVisitors = historyResponse?.data?.visitors || [];
@@ -179,20 +207,30 @@ export default function ResidentVisitors() {
                   <Text style={styles.visitorName}>{visitor.visitorName}</Text>
                   <Text style={styles.visitorMeta}>{visitor.purpose} • {visitor.expectedCount} people</Text>
                 </View>
-                <Badge label={visitor.status} variant={visitor.status as any} dot={visitor.status === 'inside'} />
+                <Badge label={visitor.status === 'pending' ? 'Pending Approval' : visitor.status.charAt(0).toUpperCase() + visitor.status.slice(1)} variant={visitor.status as any} dot={visitor.status === 'inside'} />
               </View>
               <View style={styles.detailRow}>
-                <Ionicons name={visitor.status === 'inside' ? 'enter-outline' : 'time-outline'} size={14} color={Colors.textTertiary} />
-                <Text style={styles.detailText}>
-                  {visitor.status === 'inside'
-                    ? `Entered at ${formatTime(visitor.entryAt)}`
-                    : visitor.status === 'exited'
-                      ? `Exited at ${formatTime(visitor.exitAt)}`
-                      : visitor.status === 'approved'
-                        ? `Approved at ${formatTime(visitor.approvedAt)}`
-                        : `Status changed at ${formatTime(visitor.updatedAt)}`
-                  }
-                </Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+                  <Ionicons name={visitor.status === 'inside' ? 'enter-outline' : 'time-outline'} size={14} color={Colors.textTertiary} />
+                  <Text style={styles.detailText}>
+                    {visitor.status === 'inside'
+                      ? `Entered at ${formatTime(visitor.entryAt)}`
+                      : visitor.status === 'exited'
+                        ? `Exited at ${formatTime(visitor.exitAt)}`
+                        : visitor.status === 'approved'
+                          ? `Approved at ${formatTime(visitor.approvedAt)}`
+                          : visitor.status === 'pending'
+                            ? `Awaiting approval since ${formatTime(visitor.createdAt)}`
+                            : `Status changed at ${formatTime(visitor.updatedAt)}`
+                    }
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleDeleteVisitor(visitor._id, visitor.visitorName)}
+                  style={styles.deleteBtnHistory}
+                >
+                  <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                </TouchableOpacity>
               </View>
             </Card>
           ))
@@ -217,8 +255,13 @@ const styles = StyleSheet.create({
   visitorInfo: { flex: 1, marginLeft: Spacing.md },
   visitorName: { ...Typography.bodyMedium, color: Colors.text },
   visitorMeta: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
-  detailRow: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.md, gap: Spacing.xs },
+  detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Spacing.md },
   detailText: { ...Typography.bodySm, color: Colors.textSecondary },
   detailDivider: { width: 1, height: 14, backgroundColor: Colors.border, marginHorizontal: Spacing.sm },
   actionRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
+  deleteBtnHistory: {
+    padding: Spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

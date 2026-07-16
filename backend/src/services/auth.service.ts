@@ -183,6 +183,70 @@ export class AuthService {
   async updatePushToken(userId: string, pushToken: string | undefined) {
     await User.findByIdAndUpdate(userId, { pushToken });
   }
+
+  async forgotPassword(email: string, phone: string) {
+    const user = await User.findOne({ email: email.toLowerCase().trim(), phone: phone.trim() });
+    if (!user) {
+      throw new AppError('No matching user found with the provided email and phone number.', 404);
+    }
+
+    // Generate a simple 6-digit numeric reset token
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = resetExpire;
+    await user.save();
+
+    console.log(`🔑 Reset Password Request for ${user.email}. Verification Token: ${resetToken}`);
+
+    return { resetToken };
+  }
+
+  async resetPassword(email: string, resetToken: string, newPassword: string) {
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+      resetPasswordToken: resetToken.trim(),
+      resetPasswordExpire: { $gt: new Date() }
+    });
+
+    if (!user) {
+      throw new AppError('Invalid or expired verification token.', 400);
+    }
+
+    // Hash and save new password
+    const { hashPassword } = require('../utils/hash');
+    const hashedPassword = await hashPassword(newPassword);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    return { message: 'Password has been reset successfully.' };
+  }
+
+  async assignFlat(userId: string, flatId: string) {
+    const flat = await Flat.findById(flatId);
+    if (!flat) {
+      throw new AppError('Flat not found', 404);
+    }
+
+    const user = await User.findByIdAndUpdate(userId, { flat: flatId }, { new: true }).populate({
+      path: 'flat',
+      populate: { path: 'tower' }
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    await Flat.findByIdAndUpdate(flatId, {
+      $addToSet: { residents: userId },
+      isOccupied: true
+    });
+
+    return user;
+  }
 }
 
 export const authService = new AuthService();

@@ -68,6 +68,17 @@ export const useRejectVisitor = () => {
   });
 };
 
+export const useDeleteVisitor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => visitorApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitorsPending });
+    },
+  });
+};
+
 export const useCreateVisitor = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,12 +1,14 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth.store';
 import { useSocket } from '../hooks/useSocket';
 import { useNotifications } from '../hooks/useNotifications';
-import { Colors } from '../theme';
+import { Colors, Typography, Spacing } from '../theme';
+
+const appLogo = require('../../assets/images/logo.png');
 
 // QueryClient is created once at module level — stable reference, never recreated
 const queryClient = new QueryClient({
@@ -52,7 +54,7 @@ function AuthGate() {
     if (!isAuthenticated) {
       // Not authenticated → send to login if not already there
       if (!inAuthGroup) {
-        router.replace('/(auth)/login');
+        router.replace('/(auth)/onboarding');
       }
     } else {
       // Authenticated → send to role dashboard if on auth screen or root entry screen
@@ -77,19 +79,28 @@ export default function RootLayout() {
   const restoreSession = useAuthStore((s) => s.restoreSession);
   const isLoading = useAuthStore((s) => s.isLoading);
 
+  // Keep splash visible for at least 2500ms so the logo is always seen
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     // Restore session from SecureStore exactly once on mount.
     // restoreSession always sets isLoading=false when done (even on error).
     restoreSession();
+
+    // Guarantee a minimum splash display time of 2500ms
+    const timer = setTimeout(() => setShowSplash(false), 2500);
+    return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // While restoring session — show a full-screen loading indicator.
-  // This prevents the <Redirect> flash and eliminates navigation-during-render.
-  if (isLoading) {
+  // Show branded logo screen while session is loading OR minimum time hasn't elapsed
+  if (isLoading || showSplash) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <StatusBar style="light" />
+        {/* App logo image shown for the few seconds during session restore */}
+        <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
+        <Text style={styles.brandName}>Portl</Text>
+        <Text style={styles.brandTagline}>Your society, one tap away</Text>
       </View>
     );
   }
@@ -113,8 +124,25 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primary, // solid indigo — matches the logo background
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 32,
+    marginBottom: Spacing.lg,
+  },
+  brandName: {
+    ...Typography.h1,
+    color: Colors.white,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+  brandTagline: {
+    ...Typography.body,
+    color: 'rgba(255,255,255,0.7)',
   },
 });

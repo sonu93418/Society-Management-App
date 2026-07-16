@@ -153,9 +153,66 @@ export class AdminService {
     await Notification.updateMany({ user: userId, isRead: false }, { isRead: true });
   }
 
-  // Search residents (for guards)
+  // Search residents (for guards and admins)
   async searchResidents(societyId: string, query: string) {
     const searchRegex = new RegExp(query, 'i');
+
+    // Check if query is formatted like "A-101" or "A 101" or "Tower A 101"
+    const splitMatch = query.match(/^([a-zA-Z0-9\s]+)[-\s]([0-9a-zA-Z]+)$/);
+    if (splitMatch) {
+      const towerPart = splitMatch[1].trim();
+      const flatPart = splitMatch[2].trim();
+
+      const towerRegex = new RegExp(towerPart, 'i');
+      const flatRegex = new RegExp(flatPart, 'i');
+
+      const towers = await Tower.find({ society: societyId, name: towerRegex, isActive: true });
+      const towerIds = towers.map((t) => t._id);
+
+      const matchingFlats = await Flat.find({
+        society: societyId,
+        isActive: true,
+        tower: { $in: towerIds },
+        flatNumber: flatRegex
+      });
+      const flatIds = matchingFlats.map((f) => f._id);
+
+      return User.find({
+        society: societyId,
+        role: UserRole.RESIDENT,
+        isActive: true,
+        $or: [
+          { name: searchRegex },
+          { phone: searchRegex },
+          { email: searchRegex },
+          { flat: { $in: flatIds } }
+        ],
+      })
+        .populate({
+          path: 'flat',
+          select: 'flatNumber floor tower',
+          populate: {
+            path: 'tower',
+            select: 'name'
+          }
+        })
+        .limit(20);
+    }
+
+    // Default search matching name, phone, email, tower name, or flat number
+    const towers = await Tower.find({ society: societyId, name: searchRegex, isActive: true });
+    const towerIds = towers.map((t) => t._id);
+
+    const matchingFlats = await Flat.find({
+      society: societyId,
+      isActive: true,
+      $or: [
+        { flatNumber: searchRegex },
+        { tower: { $in: towerIds } }
+      ]
+    });
+    const flatIds = matchingFlats.map((f) => f._id);
+
     return User.find({
       society: societyId,
       role: UserRole.RESIDENT,
@@ -164,10 +221,41 @@ export class AdminService {
         { name: searchRegex },
         { phone: searchRegex },
         { email: searchRegex },
+        { flat: { $in: flatIds } }
       ],
     })
-      .populate('flat', 'flatNumber floor')
+      .populate({
+        path: 'flat',
+        select: 'flatNumber floor tower',
+        populate: {
+          path: 'tower',
+          select: 'name'
+        }
+      })
       .limit(20);
+  }
+
+  async assignFlatToResident(residentId: string, flatId: string) {
+    const flat = await Flat.findById(flatId);
+    if (!flat) {
+      throw new AppError('Flat not found', 404);
+    }
+
+    const resident = await User.findByIdAndUpdate(residentId, { flat: flatId }, { new: true }).populate({
+      path: 'flat',
+      populate: { path: 'tower' }
+    });
+
+    if (!resident) {
+      throw new AppError('Resident not found', 404);
+    }
+
+    await Flat.findByIdAndUpdate(flatId, {
+      $addToSet: { residents: residentId },
+      isOccupied: true
+    });
+
+    return resident;
   }
 }
 

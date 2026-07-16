@@ -1,6 +1,7 @@
 import { HelpdeskTicket } from '../models/HelpdeskTicket';
 import { TicketReply } from '../models/HelpdeskTicket';
 import { Notification } from '../models/Notification';
+import { User } from '../models/User';
 import { AppError } from '../utils/response';
 import { TicketStatus, TicketCategory, TicketPriority, NotificationType } from '../constants';
 
@@ -11,12 +12,25 @@ interface CreateTicketInput {
   priority?: TicketPriority;
   images?: string[];
   residentId: string;
-  flatId: string;
+  flatId?: string;
   societyId: string;
 }
 
 export class TicketService {
   async createTicket(input: CreateTicketInput) {
+    let resolvedFlatId = input.flatId;
+
+    if (!resolvedFlatId) {
+      const user = await User.findById(input.residentId);
+      if (user && user.flat) {
+        resolvedFlatId = user.flat.toString();
+      }
+    }
+
+    if (!resolvedFlatId) {
+      throw new AppError('No flat is assigned to this resident account.', 400);
+    }
+
     const ticket = await HelpdeskTicket.create({
       title: input.title,
       description: input.description,
@@ -24,7 +38,7 @@ export class TicketService {
       priority: input.priority || TicketPriority.MEDIUM,
       images: input.images || [],
       resident: input.residentId,
-      flat: input.flatId,
+      flat: resolvedFlatId,
       society: input.societyId,
     });
 

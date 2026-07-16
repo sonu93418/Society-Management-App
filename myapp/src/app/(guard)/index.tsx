@@ -179,7 +179,7 @@ export default function GuardDashboard() {
                   <Text style={styles.waitingName}>{visitor.visitorName} ({visitor.type})</Text>
                   <Text style={styles.waitingFlat}>Flat {formatFlat(visitor.flat)} • {visitor.purpose}</Text>
                 </View>
-                <Badge label={visitor.status} variant="pending" />
+                <Badge label={visitor.status === 'pending' ? 'Pending Approval' : visitor.status.charAt(0).toUpperCase() + visitor.status.slice(1)} variant="pending" />
               </View>
               <Text style={styles.waitingTime}>Created at {formatTime(visitor.createdAt)}</Text>
             </Card>
@@ -229,7 +229,7 @@ export default function GuardDashboard() {
               />
               <View style={styles.activityInfo}>
                 <Text style={styles.activityName}>{visitor.visitorName}</Text>
-                <Text style={styles.activityAction}>{visitor.status} • Flat {formatFlat(visitor.flat)}</Text>
+                <Text style={styles.activityAction}>{visitor.status === 'pending' ? 'Pending Approval' : visitor.status.charAt(0).toUpperCase() + visitor.status.slice(1)} • Flat {formatFlat(visitor.flat)}</Text>
               </View>
               <Text style={styles.activityTime}>{formatTime(visitor.updatedAt)}</Text>
             </View>

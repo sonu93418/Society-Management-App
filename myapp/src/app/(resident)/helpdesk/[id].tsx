@@ -142,6 +142,8 @@ export default function TicketDetailsScreen() {
                       onPress={() => handleStatusChange('in_progress')}
                       size="sm"
                       variant="primary"
+                      style={{ flex: 1 }}
+                      icon={<Ionicons name="play-outline" size={16} color={Colors.white} />}
                     />
                   )}
                   {ticket.status === 'in_progress' && (
@@ -150,14 +152,18 @@ export default function TicketDetailsScreen() {
                       onPress={() => handleStatusChange('resolved')}
                       size="sm"
                       variant="success"
+                      style={{ flex: 1 }}
+                      icon={<Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} />}
                     />
                   )}
                   {ticket.status !== 'closed' && ticket.status !== 'resolved' && (
                     <Button
-                      title="Close"
+                      title="Close Ticket"
                       onPress={() => handleStatusChange('closed')}
                       size="sm"
-                      variant="secondary"
+                      variant="danger"
+                      style={{ flex: 1 }}
+                      icon={<Ionicons name="close-circle-outline" size={16} color={Colors.white} />}
                     />
                   )}
                 </View>

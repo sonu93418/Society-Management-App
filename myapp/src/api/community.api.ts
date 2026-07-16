@@ -39,6 +39,10 @@ export const noticeApi = {
     const res = await apiClient.put<ApiResponse>(`/community/notices/${id}/read`);
     return res.data;
   },
+  delete: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse>(`/community/notices/${id}`);
+    return res.data;
+  },
 };
 
 // ========== POLLS ==========
@@ -113,6 +117,18 @@ export const staffApi = {
   },
 };
 
+// ========== PUBLIC COMMUNITY ==========
+export const communityApi = {
+  getPublicTowers: async () => {
+    const res = await apiClient.get<ApiResponse<Tower[]>>('/community/towers');
+    return res.data;
+  },
+  getPublicFlats: async (params?: { towerId?: string }) => {
+    const res = await apiClient.get<ApiResponse<Flat[]>>('/community/flats', { params });
+    return res.data;
+  },
+};
+
 // ========== ADMIN ==========
 export const adminApi = {
   getDashboard: async () => {
@@ -149,6 +165,10 @@ export const adminApi = {
   },
   searchResidents: async (q: string) => {
     const res = await apiClient.get<ApiResponse<User[]>>('/admin/residents/search', { params: { q } });
+    return res.data;
+  },
+  assignFlatToResident: async (residentId: string, flatId: string) => {
+    const res = await apiClient.put<ApiResponse<User>>('/admin/residents/assign-flat', { residentId, flatId });
     return res.data;
   },
   getStaff: async () => {
