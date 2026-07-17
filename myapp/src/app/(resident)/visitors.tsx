@@ -6,10 +6,11 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme'
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { Skeleton } from '../../components/ui/Skeleton';
 
 import { router } from 'expo-router';
 import { usePendingVisitors, useMyVisitors, useApproveVisitor, useRejectVisitor, useDeleteVisitor } from '../../hooks/useVisitors';
-import { ActivityIndicator, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import * as Haptics from 'expo-haptics';
@@ -141,7 +142,15 @@ export default function ResidentVisitors() {
         <Text style={styles.sectionTitle}>Pending Approvals</Text>
 
         {isPendingLoading ? (
-          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: Spacing.xl }} />
+          <Card style={[styles.visitorCard, { padding: Spacing.md }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Skeleton width={44} height={44} borderRadius={BorderRadius.md} />
+              <View style={{ flex: 1, marginLeft: Spacing.md, gap: Spacing.xs }}>
+                <Skeleton width="60%" height={16} />
+                <Skeleton width="40%" height={12} />
+              </View>
+            </View>
+          </Card>
         ) : pendingVisitors.length === 0 ? (
           <Text style={{ ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.xl, textAlign: 'center', fontStyle: 'italic' }}>No pending visitor approvals.</Text>
         ) : (
@@ -189,7 +198,19 @@ export default function ResidentVisitors() {
         <Text style={[styles.sectionTitle, { marginTop: Spacing['2xl'] }]}>Visitor History</Text>
 
         {isHistoryLoading ? (
-          <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: Spacing.xl }} />
+          <View style={{ gap: Spacing.md }}>
+            {[1, 2].map((i) => (
+              <Card key={i} style={[styles.visitorCard, { padding: Spacing.md }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Skeleton width={44} height={44} borderRadius={BorderRadius.md} />
+                  <View style={{ flex: 1, marginLeft: Spacing.md, gap: Spacing.xs }}>
+                    <Skeleton width="50%" height={16} />
+                    <Skeleton width="30%" height={12} />
+                  </View>
+                </View>
+              </Card>
+            ))}
+          </View>
         ) : historyVisitors.length === 0 ? (
           <EmptyState
             icon="people-outline"

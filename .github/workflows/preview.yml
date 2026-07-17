@@ -57,6 +57,12 @@ jobs:
         working-directory: myapp
         run: npm ci
 
+      - name: 🔑 Restore google-services.json (if secret is configured)
+        if: env.HAS_GOOGLE_SERVICES_SECRET == 'true'
+        env:
+          HAS_GOOGLE_SERVICES_SECRET: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 != '' }}
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > myapp/google-services.json
+
       - name: 🚀 Run EAS Build (Android Preview)
         working-directory: myapp
         run: eas build --platform android --profile preview --non-interactive

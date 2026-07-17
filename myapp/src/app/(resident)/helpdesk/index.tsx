@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../../theme';
 import { Card } from '../../../components/ui/Card';
@@ -11,9 +11,9 @@ import { Input } from '../../../components/ui/Input';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useAuthStore } from '../../../store/auth.store';
 import type { TicketCategory, TicketPriority } from '../../../types/models';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
 import { useMyTickets, useCreateTicket } from '../../../hooks/useCommunity';
-import { ActivityIndicator } from 'react-native';
 import { useSuccessModal } from '../../../components/ui/SuccessModal';
 
 const categories: { key: TicketCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -36,6 +36,9 @@ const priorities: { key: TicketPriority; label: string; color: string }[] = [
 ];
 
 export default function HelpdeskScreen() {
+  const params = useLocalSearchParams();
+  const shouldCreate = params.create === 'true';
+
   const user = useAuthStore((s) => s.user);
   const { showSuccess } = useSuccessModal();
   const [showCreate, setShowCreate] = useState(false);
@@ -43,6 +46,12 @@ export default function HelpdeskScreen() {
   const [description, setDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<TicketCategory | null>(null);
   const [selectedPriority, setSelectedPriority] = useState<TicketPriority>('medium');
+
+  useEffect(() => {
+    if (shouldCreate) {
+      setShowCreate(true);
+    }
+  }, [shouldCreate]);
 
   const { data: response, isLoading, refetch } = useMyTickets();
   const createTicketMutation = useCreateTicket();
@@ -178,63 +187,70 @@ export default function HelpdeskScreen() {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {[
+            { label: 'Open', count: isLoading ? '...' : openCount, color: Colors.warning },
+            { label: 'In Progress', count: isLoading ? '...' : inProgressCount, color: '#3B82F6' },
+            { label: 'Resolved', count: isLoading ? '...' : resolvedCount, color: Colors.success },
+          ].map((stat, i) => (
+            <View key={i} style={[styles.statChip, { backgroundColor: `${stat.color}15` }]}>
+              <Text style={[styles.statCount, { color: stat.color }]}>{stat.count}</Text>
+              <Text style={[styles.statLabel, { color: stat.color }]}>{stat.label}</Text>
+            </View>
+          ))}
         </View>
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            {[
-              { label: 'Open', count: openCount, color: Colors.warning },
-              { label: 'In Progress', count: inProgressCount, color: '#3B82F6' },
-              { label: 'Resolved', count: resolvedCount, color: Colors.success },
-            ].map((stat, i) => (
-              <View key={i} style={[styles.statChip, { backgroundColor: `${stat.color}15` }]}>
-                <Text style={[styles.statCount, { color: stat.color }]}>{stat.count}</Text>
-                <Text style={[styles.statLabel, { color: stat.color }]}>{stat.label}</Text>
-              </View>
+
+        {/* Ticket List */}
+        {isLoading ? (
+          <View style={{ gap: Spacing.md, marginTop: Spacing.md }}>
+            {[1, 2, 3].map((i) => (
+              <Card key={i} style={{ padding: Spacing.lg, gap: Spacing.md }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Skeleton width="50%" height={18} />
+                  <Skeleton width="20%" height={18} borderRadius={BorderRadius.md} />
+                </View>
+                <Skeleton width="90%" height={14} />
+                <Skeleton width="40%" height={12} />
+              </Card>
             ))}
           </View>
-
-          {/* Ticket List */}
-          {tickets.length === 0 ? (
-            <EmptyState
-              icon="chatbubble-ellipses-outline"
-              title="No Complaints Yet"
-              description="Raise a helpdesk request if you need assistance with any maintenance or community issues."
-            />
-          ) : (
-            tickets.map((ticket) => {
-              const catInfo = categories.find((c) => c.key === ticket.category);
-              return (
-                <TouchableOpacity
-                  key={ticket._id}
-                  activeOpacity={0.7}
-                  onPress={() => router.push(`/(resident)/helpdesk/${ticket._id}`)}
-                >
-                  <Card style={styles.ticketCard}>
-                    <View style={styles.ticketRow}>
-                      <View style={[styles.ticketIcon, { backgroundColor: Colors.primaryGhost }]}>
-                        <Ionicons name={catInfo?.icon || 'help-outline'} size={20} color={Colors.primary} />
-                      </View>
-                      <View style={styles.ticketInfo}>
-                        <Text style={styles.ticketTitle}>{ticket.title}</Text>
-                        <Text style={styles.ticketMeta}>{catInfo?.label || ticket.category} • {new Date(ticket.createdAt).toLocaleDateString()}</Text>
-                      </View>
+        ) : tickets.length === 0 ? (
+          <EmptyState
+            icon="chatbubble-ellipses-outline"
+            title="No Complaints Yet"
+            description="Raise a helpdesk request if you need assistance with any maintenance or community issues."
+          />
+        ) : (
+          tickets.map((ticket) => {
+            const catInfo = categories.find((c) => c.key === ticket.category);
+            return (
+              <TouchableOpacity
+                key={ticket._id}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/(resident)/helpdesk/${ticket._id}`)}
+              >
+                <Card style={styles.ticketCard}>
+                  <View style={styles.ticketRow}>
+                    <View style={[styles.ticketIcon, { backgroundColor: Colors.primaryGhost }]}>
+                      <Ionicons name={catInfo?.icon || 'help-outline'} size={20} color={Colors.primary} />
                     </View>
-                    <View style={styles.ticketFooter}>
-                      <Badge label={ticket.status} variant={ticket.status as any} />
-                      <Badge label={ticket.priority} variant={ticket.priority as any} size="sm" />
+                    <View style={styles.ticketInfo}>
+                      <Text style={styles.ticketTitle}>{ticket.title}</Text>
+                      <Text style={styles.ticketMeta}>{catInfo?.label || ticket.category} • {new Date(ticket.createdAt).toLocaleDateString()}</Text>
                     </View>
-                  </Card>
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </ScrollView>
-      )}
+                  </View>
+                  <View style={styles.ticketFooter}>
+                    <Badge label={ticket.status} variant={ticket.status as any} />
+                    <Badge label={ticket.priority} variant={ticket.priority as any} size="sm" />
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

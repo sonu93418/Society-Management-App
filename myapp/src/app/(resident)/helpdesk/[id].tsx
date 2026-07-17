@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../../the
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { useTicketDetails, useAddTicketReply, useUpdateTicketStatus } from '../../../hooks/useCommunity';
 import { useAuthStore } from '../../../store/auth.store';
 import { useSuccessModal } from '../../../components/ui/SuccessModal';
@@ -92,10 +93,36 @@ export default function TicketDetailsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Ticket Details</Text>
+          <View style={{ width: 40 }} />
         </View>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <Card style={{ padding: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.xl }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Skeleton width="40%" height={20} />
+              <Skeleton width="20%" height={20} borderRadius={BorderRadius.md} />
+            </View>
+            <Skeleton width="100%" height={16} />
+            <Skeleton width="85%" height={16} />
+            <View style={{ height: 1, backgroundColor: Colors.borderLight, marginVertical: Spacing.xs }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Skeleton width="30%" height={12} />
+              <Skeleton width="35%" height={12} />
+            </View>
+          </Card>
+          <Text style={{ ...Typography.label, color: Colors.textSecondary, marginBottom: Spacing.md }}>Replies</Text>
+          {[1, 2].map((i) => (
+            <Card key={i} style={{ padding: Spacing.md, gap: Spacing.sm, width: '80%', alignSelf: i === 1 ? 'flex-end' : 'flex-start', marginBottom: Spacing.md }}>
+              <Skeleton width="100%" height={14} />
+              <Skeleton width="60%" height={12} />
+            </Card>
+          ))}
+        </ScrollView>
       </SafeAreaView>
     );
   }

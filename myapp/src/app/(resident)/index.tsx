@@ -225,7 +225,7 @@ export default function ResidentDashboard() {
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActionsGrid}>
           <QuickAction icon="person-add-outline" label="Pre-approve" color="#8B5CF6" bgColor="rgba(139,92,246,0.12)" onPress={() => router.push('/(resident)/pre-approve')} />
-          <QuickAction icon="document-text-outline" label="Raise Ticket" color={Colors.danger} bgColor={Colors.dangerLight} onPress={() => router.push('/(resident)/helpdesk')} />
+          <QuickAction icon="document-text-outline" label="Raise Ticket" color={Colors.danger} bgColor={Colors.dangerLight} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push('/(resident)/helpdesk?create=true'); }} />
           <QuickAction icon="fitness-outline" label="Book Amenity" color={Colors.success} bgColor={Colors.successLight} onPress={() => router.push('/(resident)/amenities')} />
           <QuickAction icon="megaphone-outline" label="Notices" color={Colors.warning} bgColor={Colors.warningLight} onPress={() => router.push('/(resident)/notices')} />
           <QuickAction icon="bar-chart-outline" label="Polls" color={Colors.primary} bgColor={Colors.primaryGhost} onPress={() => router.push('/(resident)/polls')} />
@@ -299,18 +299,30 @@ export default function ResidentDashboard() {
           </Card>
         ) : (
           recentNotices.map((notice: any) => (
-            <Card key={notice._id} style={styles.noticeCard}>
-              <View style={styles.noticeRow}>
-                <View style={[styles.noticeIcon, { backgroundColor: notice.isPinned ? Colors.dangerLight : Colors.primaryGhost }]}>
-                  <Ionicons name={notice.isPinned ? 'pin' : 'megaphone'} size={18} color={notice.isPinned ? Colors.danger : Colors.primary} />
+            <TouchableOpacity
+              key={notice._id}
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: '/(resident)/notices',
+                  params: { id: notice._id },
+                });
+              }}
+            >
+              <Card style={styles.noticeCard}>
+                <View style={styles.noticeRow}>
+                  <View style={[styles.noticeIcon, { backgroundColor: notice.isPinned ? Colors.dangerLight : Colors.primaryGhost }]}>
+                    <Ionicons name={notice.isPinned ? 'pin' : 'megaphone'} size={18} color={notice.isPinned ? Colors.danger : Colors.primary} />
+                  </View>
+                  <View style={styles.noticeInfo}>
+                    <Text style={styles.noticeTitleText} numberOfLines={1}>{notice.title}</Text>
+                    <Text style={styles.noticeDate}>{new Date(notice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+                  </View>
+                  {notice.isPinned && <Badge label="Pinned" variant="danger" size="sm" />}
                 </View>
-                <View style={styles.noticeInfo}>
-                  <Text style={styles.noticeTitleText} numberOfLines={1}>{notice.title}</Text>
-                  <Text style={styles.noticeDate}>{new Date(notice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
-                </View>
-                {notice.isPinned && <Badge label="Pinned" variant="danger" size="sm" />}
-              </View>
-            </Card>
+              </Card>
+            </TouchableOpacity>
           ))
         )}
 

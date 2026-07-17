@@ -1,21 +1,37 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-
-
-
 import { useNotices } from '../../hooks/useCommunity';
-import { ActivityIndicator } from 'react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Skeleton } from '../../components/ui/Skeleton';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function NoticesScreen() {
+  const params = useLocalSearchParams();
+  const targetId = params.id as string | undefined;
+
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const { data: response, isLoading } = useNotices();
+
+  React.useEffect(() => {
+    if (targetId) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpanded(targetId);
+    }
+  }, [targetId]);
+
+  const toggleExpand = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(expanded === id ? null : id);
+  };
 
   const notices = response?.data?.notices || [];
 
@@ -51,9 +67,19 @@ export default function NoticesScreen() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} style={[styles.noticeCard, { padding: Spacing.md }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Skeleton width={40} height={40} borderRadius={BorderRadius.md} />
+                <View style={{ flex: 1, marginLeft: Spacing.md, gap: Spacing.xs }}>
+                  <Skeleton width="70%" height={16} />
+                  <Skeleton width="40%" height={12} />
+                </View>
+              </View>
+            </Card>
+          ))}
+        </ScrollView>
       ) : notices.length === 0 ? (
         <View style={{ flex: 1, paddingHorizontal: Spacing.lg }}>
           <EmptyState
@@ -86,7 +112,7 @@ export default function NoticesScreen() {
 
           {/* Regular notices */}
           {notices.filter((n) => !n.isPinned).map((notice) => (
-            <TouchableOpacity key={notice._id} activeOpacity={0.7} onPress={() => setExpanded(expanded === notice._id ? null : notice._id)}>
+            <TouchableOpacity key={notice._id} activeOpacity={0.7} onPress={() => toggleExpand(notice._id)}>
               <Card style={styles.noticeCard}>
                 <View style={styles.noticeRow}>
                   <View style={[styles.noticeIcon, { backgroundColor: Colors.primaryGhost }]}>
