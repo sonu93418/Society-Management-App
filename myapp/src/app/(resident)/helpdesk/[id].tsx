@@ -9,6 +9,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { useTicketDetails, useAddTicketReply, useUpdateTicketStatus } from '../../../hooks/useCommunity';
 import { useAuthStore } from '../../../store/auth.store';
+import { useSuccessModal } from '../../../components/ui/SuccessModal';
 
 export default function TicketDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,13 +25,39 @@ export default function TicketDetailsScreen() {
   const ticket = detailsRes?.data?.ticket;
   const replies = detailsRes?.data?.replies || [];
 
+  const { showSuccess } = useSuccessModal();
+
   const handleStatusChange = (newStatus: string) => {
     updateStatusMutation.mutate(
       { ticketId: id, status: newStatus },
       {
         onSuccess: () => {
-          Alert.alert('Status Updated', `Ticket is now marked as ${newStatus.replace('_', ' ')}.`);
           refetch();
+          
+          if (newStatus === 'resolved') {
+            showSuccess({
+              title: '🎉 Issue Resolved',
+              message: 'Your maintenance complaint has been successfully resolved! Thank you for your feedback.',
+              taskType: 'ticket_resolved',
+              details: [
+                { label: 'Ticket ID', value: id?.slice(-6).toUpperCase() || '' },
+                { label: 'Issue Title', value: ticket?.title || 'Helpdesk Request' },
+                { label: 'Category', value: getCategoryLabel(ticket?.category || '') },
+                { label: 'New Status', value: 'RESOLVED (FIXED) ✅' }
+              ],
+            });
+          } else {
+            showSuccess({
+              title: '🔄 Status Updated',
+              message: `The ticket status has been updated to "${newStatus.replace('_', ' ')}".`,
+              taskType: 'ticket_created',
+              details: [
+                { label: 'Ticket ID', value: id?.slice(-6).toUpperCase() || '' },
+                { label: 'Issue Title', value: ticket?.title || 'Helpdesk Request' },
+                { label: 'New Status', value: newStatus.toUpperCase() }
+              ],
+            });
+          }
         },
         onError: (err: any) => {
           Alert.alert('Error', err?.message || 'Failed to update status');

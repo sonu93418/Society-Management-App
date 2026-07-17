@@ -22,6 +22,16 @@ export class AuthController {
     }
   }
 
+  async googleLogin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { idToken } = req.body;
+      const result = await authService.googleLogin(idToken);
+      sendSuccess(res, 200, 'Google login successful', result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = req.body;
@@ -85,6 +95,26 @@ export class AuthController {
       const { flatId } = req.body;
       const user = await authService.assignFlat(req.user!.userId, flatId);
       sendSuccess(res, 200, 'Flat assigned successfully', user);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async registerDevice(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { token, tokenType, deviceType } = req.body;
+      const result = await authService.registerDevice(req.user!.userId, { token, tokenType, deviceType });
+      sendSuccess(res, 201, 'Device registered successfully', result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updatePreferences(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const preferences = req.body;
+      const user = await authService.updatePreferences(req.user!.userId, preferences);
+      sendSuccess(res, 200, 'Notification preferences updated successfully', user);
     } catch (error) {
       next(error);
     }

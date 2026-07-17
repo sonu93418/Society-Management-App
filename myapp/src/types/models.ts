@@ -12,6 +12,16 @@ export interface User {
   flat?: string | Flat;
   avatar?: string;
   isActive: boolean;
+  notificationPreferences?: {
+    visitor: boolean;
+    complaint: boolean;
+    notice: boolean;
+    booking: boolean;
+    payment: boolean;
+    poll: boolean;
+    marketing: boolean;
+    emergency: boolean;
+  };
 }
 
 export interface Society {

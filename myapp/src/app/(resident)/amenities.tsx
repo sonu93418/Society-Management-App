@@ -12,6 +12,7 @@ import type { Amenity } from '../../types/models';
 import { useAmenities, useBookAmenity, useBookings, useCancelBooking } from '../../hooks/useCommunity';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { getApiError } from '../../api/client';
+import { useSuccessModal } from '../../components/ui/SuccessModal';
 
 const timeSlots = [
   '06:00 - 07:00', '07:00 - 08:00', '08:00 - 09:00', '09:00 - 10:00',
@@ -44,6 +45,7 @@ const getAmenityIcon = (name: string) => {
 };
 
 export default function AmenitiesScreen() {
+  const { showSuccess } = useSuccessModal();
   const [activeTab, setActiveTab] = useState<'amenities' | 'bookings'>('amenities');
 
   const { data: response, isLoading: amenitiesLoading, refetch: refetchAmenities } = useAmenities();
@@ -112,16 +114,29 @@ export default function AmenitiesScreen() {
         numberOfPeople: people,
       },
       {
-        onSuccess: (bookingRes) => {
-          const statusMsg = bookingRes.data?.status === 'pending'
-            ? 'Booking request submitted and is pending approval.'
-            : 'Booking confirmed successfully!';
-
-          Alert.alert(
-            'Booking Request',
-            `${selectedAmenity.name}\nDate: ${dates[selectedDate].toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}\nSlot: ${selectedSlot}\n${statusMsg}`,
-            [{ text: 'OK', onPress: () => { setSelectedAmenity(null); setSelectedSlot(null); setPeople(1); } }]
-          );
+        onSuccess: (bookingRes: any) => {
+          const statusVal = bookingRes.data?.status || 'confirmed';
+          const isPending = statusVal === 'pending';
+          
+          showSuccess({
+            title: isPending ? '⏳ Booking Pending' : '🎉 Booking Confirmed!',
+            message: isPending
+              ? `Your booking request for ${selectedAmenity.name} has been submitted to the administration for approval.`
+              : `Your reservation for ${selectedAmenity.name} is confirmed! Enjoy your time.`,
+            taskType: 'booking_success',
+            details: [
+              { label: 'Facility', value: selectedAmenity.name },
+              { label: 'Date', value: dates[selectedDate].toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) },
+              { label: 'Time Slot', value: selectedSlot },
+              { label: 'Status', value: isPending ? 'PENDING APPROVAL' : 'CONFIRMED ✅' },
+            ],
+            onConfirm: () => {
+              setSelectedAmenity(null);
+              setSelectedSlot(null);
+              setPeople(1);
+              refetchBookings();
+            }
+          });
         },
         onError: (err: any) => {
           Alert.alert('Error', getApiError(err));

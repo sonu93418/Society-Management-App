@@ -184,6 +184,20 @@ export class VisitorService {
     request.exitGuard = guardId as any;
     await request.save();
 
+    // Notify resident about visitor exit
+    try {
+      await Notification.create({
+        user: request.resident,
+        society: request.society,
+        type: NotificationType.VISITOR_EXIT,
+        title: 'Visitor Exited',
+        body: `${request.visitorName} has exited the society.`,
+        data: { visitorRequestId: request._id },
+      });
+    } catch (err) {
+      console.error('Failed to send visitor exit notification:', err);
+    }
+
     return request;
   }
 

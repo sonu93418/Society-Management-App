@@ -91,9 +91,10 @@ export class VisitorController {
 
   async getHistory(req: AuthRequest, res: Response, next: NextFunction) {
     try {
+      const isResident = req.user!.role === 'resident';
       const result = await visitorService.getVisitorHistory({
         societyId: req.user!.societyId,
-        residentId: req.query.residentId as string,
+        residentId: isResident ? req.user!.userId : (req.query.residentId as string),
         status: req.query.status as string,
         page: Number(req.query.page) || 1,
         limit: Number(req.query.limit) || 20,

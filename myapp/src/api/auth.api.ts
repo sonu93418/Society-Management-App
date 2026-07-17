@@ -28,6 +28,11 @@ export const authApi = {
     return res.data;
   },
 
+  googleLogin: async (idToken: string) => {
+    const res = await apiClient.post<ApiResponse<AuthResponse>>('/auth/google-login', { idToken });
+    return res.data;
+  },
+
   register: async (data: RegisterRequest) => {
     const res = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', data);
     return res.data;
@@ -50,6 +55,16 @@ export const authApi = {
 
   updatePushToken: async (pushToken: string | null) => {
     const res = await apiClient.put<ApiResponse>('/auth/push-token', { pushToken });
+    return res.data;
+  },
+
+  registerDevice: async (token: string, tokenType: 'fcm' | 'expo', deviceType: string) => {
+    const res = await apiClient.post<ApiResponse>('/auth/register-device', { token, tokenType, deviceType });
+    return res.data;
+  },
+
+  updateNotificationPreferences: async (preferences: Record<string, boolean>) => {
+    const res = await apiClient.put<ApiResponse>('/auth/notification-preferences', preferences);
     return res.data;
   },
 

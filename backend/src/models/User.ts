@@ -15,6 +15,16 @@ export interface IUser extends Document {
   pushToken?: string;
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;
+  notificationPreferences: {
+    visitor: boolean;
+    complaint: boolean;
+    notice: boolean;
+    booking: boolean;
+    payment: boolean;
+    poll: boolean;
+    marketing: boolean;
+    emergency: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,6 +88,16 @@ const userSchema = new Schema<IUser>(
     },
     resetPasswordExpire: {
       type: Date,
+    },
+    notificationPreferences: {
+      visitor: { type: Boolean, default: true },
+      complaint: { type: Boolean, default: true },
+      notice: { type: Boolean, default: true },
+      booking: { type: Boolean, default: true },
+      payment: { type: Boolean, default: true },
+      poll: { type: Boolean, default: true },
+      marketing: { type: Boolean, default: true },
+      emergency: { type: Boolean, default: true },
     },
   },
   {

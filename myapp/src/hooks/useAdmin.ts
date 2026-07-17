@@ -97,6 +97,7 @@ export const useAssignFlatToResident = () => {
       adminApi.assignFlatToResident(data.residentId, data.flatId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.residents });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.flats });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminDashboard });
     },
   });

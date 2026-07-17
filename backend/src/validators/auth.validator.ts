@@ -40,3 +40,29 @@ export const resetPasswordSchema = z.object({
     newPassword: z.string().min(6, 'Password must be at least 6 characters'),
   }),
 });
+
+export const registerDeviceSchema = z.object({
+  body: z.object({
+    token: z.string().min(1, 'Token is required'),
+    tokenType: z.enum(['fcm', 'expo']),
+    deviceType: z.enum(['ios', 'android', 'web']).optional(),
+  }),
+});
+
+export const updatePreferencesSchema = z.object({
+  body: z.object({
+    visitor: z.boolean().optional(),
+    complaint: z.boolean().optional(),
+    notice: z.boolean().optional(),
+    booking: z.boolean().optional(),
+    payment: z.boolean().optional(),
+    poll: z.boolean().optional(),
+    marketing: z.boolean().optional(),
+  }),
+});
+
+export const googleLoginSchema = z.object({
+  body: z.object({
+    idToken: z.string().min(1, 'Google ID token is required'),
+  }),
+});

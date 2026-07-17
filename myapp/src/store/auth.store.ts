@@ -1,6 +1,46 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import type { User, UserRole } from '../types/models';
+
+const isWeb = Platform.OS === 'web';
+
+// Resilient storage wrapper (SecureStore for iOS/Android, localStorage for Web)
+const storage = {
+  getItemAsync: async (key: string): Promise<string | null> => {
+    if (isWeb) {
+      try {
+        return localStorage.getItem(key);
+      } catch (err) {
+        console.warn('localStorage read blocked or unavailable:', err);
+        return null;
+      }
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItemAsync: async (key: string, value: string): Promise<void> => {
+    if (isWeb) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (err) {
+        console.warn('localStorage write blocked or unavailable:', err);
+      }
+      return;
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  deleteItemAsync: async (key: string): Promise<void> => {
+    if (isWeb) {
+      try {
+        localStorage.removeItem(key);
+      } catch (err) {
+        console.warn('localStorage delete blocked or unavailable:', err);
+      }
+      return;
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
+};
 
 // SecureStore keys
 const KEYS = {
@@ -39,9 +79,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAuth: async (user, accessToken, refreshToken) => {
     try {
       await Promise.all([
-        SecureStore.setItemAsync(KEYS.ACCESS_TOKEN, accessToken),
-        SecureStore.setItemAsync(KEYS.REFRESH_TOKEN, refreshToken),
-        SecureStore.setItemAsync(KEYS.USER, JSON.stringify(user)),
+        storage.setItemAsync(KEYS.ACCESS_TOKEN, accessToken),
+        storage.setItemAsync(KEYS.REFRESH_TOKEN, refreshToken),
+        storage.setItemAsync(KEYS.USER, JSON.stringify(user)),
       ]);
     } catch (e) {
       console.error('[AuthStore] Failed to persist session to SecureStore:', e);
@@ -59,13 +99,13 @@ export const useAuthStore = create<AuthState>((set) => ({
    * Called on token refresh. Updates in-memory tokens and SecureStore.
    */
   setTokens: (accessToken, refreshToken) => {
-    SecureStore.setItemAsync(KEYS.ACCESS_TOKEN, accessToken).catch(() => {});
-    SecureStore.setItemAsync(KEYS.REFRESH_TOKEN, refreshToken).catch(() => {});
+    storage.setItemAsync(KEYS.ACCESS_TOKEN, accessToken).catch(() => {});
+    storage.setItemAsync(KEYS.REFRESH_TOKEN, refreshToken).catch(() => {});
     set({ accessToken, refreshToken });
   },
 
   setUser: (user) => {
-    SecureStore.setItemAsync(KEYS.USER, JSON.stringify(user)).catch(() => {});
+    storage.setItemAsync(KEYS.USER, JSON.stringify(user)).catch(() => {});
     set({ user });
   },
 
@@ -79,9 +119,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   restoreSession: async () => {
     try {
       const [accessToken, refreshToken, userJson] = await Promise.all([
-        SecureStore.getItemAsync(KEYS.ACCESS_TOKEN),
-        SecureStore.getItemAsync(KEYS.REFRESH_TOKEN),
-        SecureStore.getItemAsync(KEYS.USER),
+        storage.getItemAsync(KEYS.ACCESS_TOKEN),
+        storage.getItemAsync(KEYS.REFRESH_TOKEN),
+        storage.getItemAsync(KEYS.USER),
       ]);
 
       if (accessToken && refreshToken && userJson) {
@@ -109,9 +149,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     try {
       await Promise.all([
-        SecureStore.deleteItemAsync(KEYS.ACCESS_TOKEN),
-        SecureStore.deleteItemAsync(KEYS.REFRESH_TOKEN),
-        SecureStore.deleteItemAsync(KEYS.USER),
+        storage.deleteItemAsync(KEYS.ACCESS_TOKEN),
+        storage.deleteItemAsync(KEYS.REFRESH_TOKEN),
+        storage.deleteItemAsync(KEYS.USER),
       ]);
     } catch (e) {
       console.error('[AuthStore] Failed to clear SecureStore on logout:', e);

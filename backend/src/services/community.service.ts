@@ -17,6 +17,25 @@ export class NoticeService {
       author: data.authorId,
       society: data.societyId,
     });
+
+    // Notify all active residents in the society
+    try {
+      const { User } = require('../models/User');
+      const residents = await User.find({ society: data.societyId, role: 'resident', isActive: true });
+      for (const resident of residents) {
+        await Notification.create({
+          user: resident._id,
+          society: data.societyId,
+          type: NotificationType.NOTICE_PUBLISHED,
+          title: '📢 New Notice Published',
+          body: data.title,
+          data: { noticeId: notice._id.toString() },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to dispatch notifications for new notice:', err);
+    }
+
     return notice;
   }
 
@@ -55,6 +74,25 @@ export class PollService {
       author: data.authorId,
       society: data.societyId,
     });
+
+    // Notify all active residents in the society
+    try {
+      const { User } = require('../models/User');
+      const residents = await User.find({ society: data.societyId, role: 'resident', isActive: true });
+      for (const resident of residents) {
+        await Notification.create({
+          user: resident._id,
+          society: data.societyId,
+          type: NotificationType.POLL_CREATED,
+          title: '🗳️ New Poll Published',
+          body: data.title,
+          data: { pollId: poll._id.toString() },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to dispatch notifications for new poll:', err);
+    }
+
     return poll;
   }
 
@@ -137,6 +175,35 @@ export class AmenityService {
       status: amenity.requiresApproval ? BookingStatus.PENDING : BookingStatus.CONFIRMED,
     });
 
+    // Notify resident or admin
+    try {
+      if (booking.status === BookingStatus.CONFIRMED) {
+        await Notification.create({
+          user: data.residentId,
+          society: data.societyId,
+          type: NotificationType.BOOKING_CONFIRMED,
+          title: '📅 Booking Confirmed',
+          body: `Your booking for ${amenity.name} on ${new Date(data.date).toLocaleDateString('en-IN')} is confirmed!`,
+          data: { bookingId: booking._id.toString() },
+        });
+      } else if (booking.status === BookingStatus.PENDING) {
+        const { User } = require('../models/User');
+        const admins = await User.find({ society: data.societyId, role: 'admin', isActive: true });
+        for (const admin of admins) {
+          await Notification.create({
+            user: admin._id,
+            society: data.societyId,
+            type: NotificationType.BOOKING_CONFIRMED,
+            title: '📅 New Booking Request',
+            body: `A resident requested to book ${amenity.name} on ${new Date(data.date).toLocaleDateString('en-IN')}.`,
+            data: { bookingId: booking._id.toString() },
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send booking notification:', err);
+    }
+
     return booking;
   }
 
@@ -160,7 +227,7 @@ export class AmenityService {
   }
 
   async cancelBooking(bookingId: string, residentId: string, reason?: string) {
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId).populate('amenity', 'name');
     if (!booking) throw new AppError('Booking not found', 404);
     if (booking.resident.toString() !== residentId) throw new AppError('Unauthorized', 403);
     if (booking.status === BookingStatus.CANCELLED) throw new AppError('Already cancelled', 400);
@@ -169,6 +236,22 @@ export class AmenityService {
     booking.cancelledAt = new Date();
     booking.cancelReason = reason;
     await booking.save();
+
+    // Notify resident about cancellation
+    try {
+      const amenityName = (booking.amenity as any)?.name || 'Facility';
+      await Notification.create({
+        user: residentId,
+        society: booking.society,
+        type: NotificationType.BOOKING_CANCELLED,
+        title: '📅 Booking Cancelled',
+        body: `Your booking for ${amenityName} has been cancelled.`,
+        data: { bookingId: booking._id.toString() },
+      });
+    } catch (err) {
+      console.error('Failed to send cancellation notification:', err);
+    }
+
     return booking;
   }
 }
@@ -200,6 +283,20 @@ export class PaymentService {
     payment.paidAt = new Date();
     payment.transactionId = transactionId;
     await payment.save();
+
+    // Notify resident about payment received
+    try {
+      await Notification.create({
+        user: payment.resident,
+        society: payment.society,
+        type: NotificationType.PAYMENT_RECEIVED,
+        title: '💳 Payment Received',
+        body: `Thank you! Your payment of ₹${payment.amount} for ${payment.month} ${payment.year} has been received.`,
+        data: { paymentId: payment._id.toString() },
+      });
+    } catch (err) {
+      console.error('Failed to send payment receipt notification:', err);
+    }
 
     return payment;
   }

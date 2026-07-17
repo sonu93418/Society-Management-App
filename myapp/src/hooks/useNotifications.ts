@@ -1,132 +1,101 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
-import { authApi } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
-
-// Track whether the handler has been configured yet (module-level singleton flag)
-let notificationHandlerConfigured = false;
-
-// Track the last successfully registered token to avoid redundant API updates on re-render/re-mount
-let lastRegisteredPushToken: string | null = null;
+import { router } from 'expo-router';
+import { useInAppNotification } from '../components/ui/InAppNotification';
+import { NotificationManager } from '../services/NotificationManager';
 
 export const useNotifications = () => {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
-  const notificationListener = useRef<any>(null);
-  const responseListener = useRef<any>(null);
+  const { showInAppNotification } = useInAppNotification();
 
-  // Effect 1: Configure the notification handler exactly once after mount.
-  // This MUST be inside useEffect — calling setNotificationHandler at module
-  // level triggers a React state update before components have mounted.
+  // Effect 1: Initialize NotificationManager channels and token listener
   useEffect(() => {
-    if (!notificationHandlerConfigured) {
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-          shouldShowBanner: true,
-          shouldShowList: true,
-        }),
-      });
-      notificationHandlerConfigured = true;
+    if (!token || !user?.id) {
+      // Shutdown notification listeners if unauthenticated
+      NotificationManager.shutdown();
+      return;
     }
-  }, []);
 
-  // Effect 2: Register push token with backend when the user is authenticated.
+    NotificationManager.initNotifications(user.id, token);
+  }, [token, user?.id]);
+
+  // Effect 2: Bind foreground & tapped listeners
   useEffect(() => {
-    if (!token || !user) return;
+    // Foreground callback handler
+    NotificationManager.onNotificationReceived('use-notifications-hook', (notification) => {
+      console.log('📩 useNotifications: Received foreground event:', notification);
+      
+      const { title, body, data } = notification.request.content;
+      const category = data?.category || 'general';
 
-    registerForPushNotificationsAsync()
-      .then(async (pushToken) => {
-        if (pushToken) {
-          if (pushToken === lastRegisteredPushToken) {
-            console.log('📱 Push token already registered in this session, skipping API call');
-            return;
-          }
-          try {
-            await authApi.updatePushToken(pushToken);
-            lastRegisteredPushToken = pushToken;
-            console.log('📱 Push token registered with backend:', pushToken);
-          } catch (err) {
-            console.error('❌ Failed to register push token with backend:', err);
-          }
-        }
-      })
-      .catch((err) => console.error('❌ registerForPushNotificationsAsync error:', err));
-  }, [token, user]);
+      showInAppNotification({
+        title: title || 'New Notification',
+        body: body || '',
+        category: category as any,
+        data: data as any,
+      });
 
-  // Effect 3: Subscribe to notification events after mount (independent of auth).
-  useEffect(() => {
-    // Foreground notification received
-    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('📩 Push notification received in foreground:', notification);
+      // Invalidate key query keys to update UI in real-time
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['visitors'] });
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
     });
 
-    // User tapped on a notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('👆 User tapped on a push notification:', response);
+    // Deep link tap handler callback
+    NotificationManager.onNotificationTapped('use-notifications-hook', (response) => {
+      console.log('👆 useNotifications: User tapped notification response:', response);
+      
+      const data = response.notification.request.content.data;
+      if (data) {
+        const category = data.category;
+        const ticketId = data.ticketId;
+        const role = user?.role || 'resident';
+
+        if (role === 'resident') {
+          if (category === 'visitor') {
+            router.push('/(resident)/visitors');
+          } else if (category === 'complaint') {
+            if (ticketId) {
+              router.push(`/(resident)/helpdesk/${ticketId}`);
+            } else {
+              router.push('/(resident)/helpdesk');
+            }
+          } else if (category === 'notice') {
+            router.push('/(resident)/notices');
+          } else if (category === 'poll') {
+            router.push('/(resident)/polls');
+          } else if (category === 'booking') {
+            router.push('/(resident)/amenities');
+          } else if (category === 'payment') {
+            router.push('/(resident)/payments');
+          } else {
+            router.push('/(resident)');
+          }
+        } else if (role === 'admin') {
+          if (category === 'complaint') {
+            if (ticketId) {
+              router.push(`/(resident)/helpdesk/${ticketId}`);
+            } else {
+              router.push('/(admin)/manage');
+            }
+          } else if (category === 'visitor') {
+            router.push('/(admin)/manage');
+          } else {
+            router.push('/(admin)');
+          }
+        } else if (role === 'guard') {
+          router.push('/(guard)');
+        }
+      }
     });
 
     return () => {
-      notificationListener.current?.remove();
-      responseListener.current?.remove();
+      NotificationManager.offNotificationReceived('use-notifications-hook');
+      NotificationManager.offNotificationTapped('use-notifications-hook');
     };
-  }, [queryClient]);
+  }, [queryClient, user, showInAppNotification]);
 };
-
-async function registerForPushNotificationsAsync() {
-  let pushToken: string | undefined;
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#4F46E5',
-    });
-  }
-
-  if (!Device.isDevice) {
-    console.log('💻 Push notifications require a physical device. Simulator detected.');
-    return;
-  }
-
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') {
-    console.log('⚠️ Push notification permission not granted.');
-    return;
-  }
-
-  try {
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ??
-      Constants?.easConfig?.projectId;
-
-    if (!projectId) {
-      throw new Error('EAS projectId not found in app.json extra.eas.projectId');
-    }
-
-    pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    console.log('📱 Expo push token obtained:', pushToken);
-  } catch (e) {
-    console.error('❌ Error getting Expo Push Token:', e);
-  }
-
-  return pushToken;
-}

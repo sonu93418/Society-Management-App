@@ -48,18 +48,36 @@ notificationSchema.post('save', async function (doc) {
       createdAt: doc.createdAt,
     });
 
-    // 2. Send native push notification if user has registered a token
-    const User = mongoose.model('User');
-    const user = await User.findById(doc.user).select('pushToken');
-    if (user && user.pushToken) {
-      const { pushNotificationService } = require('../services/pushNotification.service');
-      await pushNotificationService.sendPushNotification({
-        to: user.pushToken,
-        title: doc.title,
-        body: doc.body,
-        data: doc.data ? JSON.parse(JSON.stringify(doc.data)) : undefined,
-      });
+    // 2. Map NotificationType to Push Notification Category
+    let category: 'visitor' | 'complaint' | 'notice' | 'booking' | 'payment' | 'poll' | 'emergency' | 'general' = 'general';
+    const type = doc.type;
+
+    if (type.startsWith('visitor')) {
+      category = 'visitor';
+    } else if (type.startsWith('ticket')) {
+      category = 'complaint';
+    } else if (type === 'notice_published') {
+      category = 'notice';
+    } else if (type === 'poll_created') {
+      category = 'poll';
+    } else if (type.startsWith('booking')) {
+      category = 'booking';
+    } else if (type.startsWith('payment')) {
+      category = 'payment';
+    } else if (type === 'emergency') {
+      category = 'emergency';
     }
+
+    // 3. Enqueue and dispatch push notification using the queue service
+    const { notificationQueueService } = require('../services/notificationQueue.service');
+    await notificationQueueService.enqueue({
+      userId: doc.user.toString(),
+      title: doc.title,
+      body: doc.body,
+      category,
+      data: doc.data ? JSON.parse(JSON.stringify(doc.data)) : undefined,
+    });
+
   } catch (error) {
     const { logger } = require('../utils/logger');
     if (logger) {

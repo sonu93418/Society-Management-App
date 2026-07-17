@@ -7,6 +7,8 @@ import { useAuthStore } from '../store/auth.store';
 import { useSocket } from '../hooks/useSocket';
 import { useNotifications } from '../hooks/useNotifications';
 import { Colors, Typography, Spacing } from '../theme';
+import { SuccessModalProvider } from '../components/ui/SuccessModal';
+import { InAppNotificationProvider } from '../components/ui/InAppNotification';
 
 const appLogo = require('../../assets/images/logo.png');
 
@@ -90,7 +92,7 @@ export default function RootLayout() {
     // Guarantee a minimum splash display time of 2500ms
     const timer = setTimeout(() => setShowSplash(false), 2500);
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [restoreSession]);
 
   // Show branded logo screen while session is loading OR minimum time hasn't elapsed
   if (isLoading || showSplash) {
@@ -107,16 +109,20 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(resident)" />
-        <Stack.Screen name="(guard)" />
-        <Stack.Screen name="(admin)" />
-      </Stack>
-      {/* AuthGate is placed INSIDE Stack so useRouter/useSegments work correctly */}
-      <AuthGate />
+      <InAppNotificationProvider>
+        <SuccessModalProvider>
+          <StatusBar style="dark" />
+          <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(resident)" />
+            <Stack.Screen name="(guard)" />
+            <Stack.Screen name="(admin)" />
+          </Stack>
+          {/* AuthGate is placed INSIDE Stack so useRouter/useSegments work correctly */}
+          <AuthGate />
+        </SuccessModalProvider>
+      </InAppNotificationProvider>
     </QueryClientProvider>
   );
 }

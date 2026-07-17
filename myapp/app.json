@@ -57,11 +57,18 @@
         {
           "icon": "./assets/images/logo.png",
           "color": "#4F46E5",
-          "sounds": [],
+          "sounds": [
+            "./assets/sounds/doorbell.wav",
+            "./assets/sounds/complaint.wav",
+            "./assets/sounds/success.wav",
+            "./assets/sounds/emergency.wav",
+            "./assets/sounds/general.wav"
+          ],
           "mode": "production"
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

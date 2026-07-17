@@ -1,0 +1,62 @@
+name: Android Preview Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'myapp/**'
+      - '.github/workflows/preview.yml'
+
+jobs:
+  validate:
+    name: 🩺 Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: myapp/package-lock.json
+
+      - name: 📦 Install Dependencies
+        working-directory: myapp
+        run: npm ci
+
+      - name: 🔍 Run TypeScript Verification Check
+        working-directory: myapp
+        run: npx tsc --noEmit
+
+  preview:
+    name: 🤖 Android EAS Preview Build
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: myapp/package-lock.json
+
+      - name: 🛠 Setup Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install Dependencies
+        working-directory: myapp
+        run: npm ci
+
+      - name: 🚀 Run EAS Build (Android Preview)
+        working-directory: myapp
+        run: eas build --platform android --profile preview --non-interactive

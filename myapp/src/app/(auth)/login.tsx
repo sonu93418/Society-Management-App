@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../store/auth.store';
 import { authApi } from '../../api/auth.api';
 import { getApiError } from '../../api/client';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 import * as Haptics from 'expo-haptics';
 
@@ -32,6 +33,101 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showShowcase, setShowShowcase] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      GoogleSignin.configure({
+        webClientId:
+          process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
+          '1086683526523-google-client-id-placeholder.apps.googleusercontent.com',
+        offlineAccess: true,
+      });
+    }
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+
+    if (Platform.OS === 'web') {
+      const confirmMock = window.confirm(
+        'Google Native Sign-In is not supported on Web.\n\nWould you like to log in with a Mock Google Account for testing?'
+      );
+      if (confirmMock) {
+        await performGoogleBackendLogin('mock_google_token_resident');
+      } else {
+        setLoading(false);
+      }
+      return;
+    }
+
+    try {
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices();
+      }
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken;
+
+      if (!idToken) {
+        throw new Error('No ID Token returned from Google');
+      }
+
+      await performGoogleBackendLogin(idToken);
+    } catch (error: any) {
+      console.warn('Google Sign-In Error details:', error);
+
+      if (
+        error.code === statusCodes.SIGN_IN_CANCELLED ||
+        error.code === statusCodes.IN_PROGRESS
+      ) {
+        Alert.alert('Sign-In Cancelled', 'Google Sign-In was cancelled.');
+        setLoading(false);
+        return;
+      }
+
+      // Offer Mock Google Login for testing/offline simulator contexts
+      Alert.alert(
+        'Google Sign-In Setup',
+        'Google Client Credentials are not configured in your environment, or Play Services are missing.\n\nWould you like to log in with a Mock Google Account for testing?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
+          { 
+            text: 'Use Mock Resident', 
+            onPress: () => performGoogleBackendLogin('mock_google_token_resident') 
+          },
+          { 
+            text: 'Use Mock Admin', 
+            onPress: () => performGoogleBackendLogin('mock_google_token_admin') 
+          }
+        ]
+      );
+    }
+  };
+
+  const performGoogleBackendLogin = async (idToken: string) => {
+    setLoading(true);
+    try {
+      const response = await authApi.googleLogin(idToken);
+      if (response.success && response.data) {
+        const { user, accessToken, refreshToken } = response.data;
+        await setAuth({ ...user, id: user.id || (user as any)._id }, accessToken, refreshToken);
+
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        if (user.role === 'admin') {
+          router.replace('/(admin)');
+        } else if (user.role === 'guard') {
+          router.replace('/(guard)');
+        } else {
+          router.replace('/(resident)');
+        }
+      }
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Google Auth Failed', getApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -145,6 +241,21 @@ export default function LoginScreen() {
             size="lg"
             icon={<Ionicons name="log-in-outline" size={20} color={Colors.white} />}
           />
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.googleBtn}
+            onPress={handleGoogleLogin}
+            disabled={loading}
+          >
+            <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+            <Text style={styles.googleBtnText}>Sign in with Google</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.registerLink}
@@ -496,5 +607,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
     lineHeight: 16,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.borderLight,
+  },
+  dividerText: {
+    ...Typography.captionMedium,
+    color: Colors.textTertiary,
+    textTransform: 'lowercase',
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: BorderRadius.lg,
+    height: 48,
+    width: '100%',
+    ...Shadows.sm,
+  },
+  googleBtnText: {
+    ...Typography.bodyMedium,
+    color: Colors.text,
+    fontWeight: '600',
   },
 });

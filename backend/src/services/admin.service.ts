@@ -8,7 +8,7 @@ import { HelpdeskTicket } from '../models/HelpdeskTicket';
 import { Payment } from '../models/Payment';
 import { Notification } from '../models/Notification';
 import { AppError } from '../utils/response';
-import { UserRole, VisitorStatus, TicketStatus, PaymentStatus } from '../constants';
+import { UserRole, VisitorStatus, TicketStatus, PaymentStatus, NotificationType } from '../constants';
 
 export class AdminService {
   // Dashboard analytics
@@ -115,7 +115,11 @@ export class AdminService {
   async getResidents(societyId: string, page = 1, limit = 20) {
     const total = await User.countDocuments({ society: societyId, role: UserRole.RESIDENT });
     const residents = await User.find({ society: societyId, role: UserRole.RESIDENT })
-      .populate('flat', 'flatNumber')
+      .populate({
+        path: 'flat',
+        select: 'flatNumber floor tower',
+        populate: { path: 'tower', select: 'name' },
+      })
       .sort({ name: 1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -236,26 +240,76 @@ export class AdminService {
   }
 
   async assignFlatToResident(residentId: string, flatId: string) {
-    const flat = await Flat.findById(flatId);
+    // 1. Validate flat exists and is active
+    const flat = await Flat.findOne({ _id: flatId, isActive: true });
     if (!flat) {
-      throw new AppError('Flat not found', 404);
+      throw new AppError('Flat not found or inactive', 404);
     }
 
-    const resident = await User.findByIdAndUpdate(residentId, { flat: flatId }, { new: true }).populate({
-      path: 'flat',
-      populate: { path: 'tower' }
-    });
-
+    // 2. Validate resident exists
+    const resident = await User.findById(residentId);
     if (!resident) {
       throw new AppError('Resident not found', 404);
     }
 
-    await Flat.findByIdAndUpdate(flatId, {
-      $addToSet: { residents: residentId },
-      isOccupied: true
+    // 3. Ensure flat belongs to same society as resident
+    if (flat.society.toString() !== resident.society.toString()) {
+      throw new AppError('Flat does not belong to this society', 403);
+    }
+
+    // 4. Prevent assigning an already-occupied flat to a different resident
+    const flatAlreadyHasOtherResident = flat.residents.some(
+      (r) => r.toString() !== residentId
+    );
+    if (flatAlreadyHasOtherResident) {
+      throw new AppError('This flat is already occupied by another resident. Please choose a vacant flat.', 409);
+    }
+
+    // 5. If resident already has a different flat, remove them from it
+    if (resident.flat && resident.flat.toString() !== flatId) {
+      const oldFlatId = resident.flat.toString();
+      await Flat.findByIdAndUpdate(oldFlatId, {
+        $pull: { residents: residentId },
+      });
+      // Clear isOccupied if no residents remain in the old flat
+      const oldFlatAfter = await Flat.findById(oldFlatId);
+      if (oldFlatAfter && oldFlatAfter.residents.length === 0) {
+        await Flat.findByIdAndUpdate(oldFlatId, { isOccupied: false });
+      }
+    }
+
+    // 6. Assign new flat to resident
+    const updatedResident = await User.findByIdAndUpdate(
+      residentId,
+      { flat: flatId },
+      { new: true }
+    ).populate({
+      path: 'flat',
+      select: 'flatNumber floor tower isOccupied',
+      populate: { path: 'tower', select: 'name' },
     });
 
-    return resident;
+    // 7. Add resident to flat's residents list and mark as occupied
+    await Flat.findByIdAndUpdate(flatId, {
+      $addToSet: { residents: residentId },
+      isOccupied: true,
+    });
+
+    // 8. Notify resident about flat assignment
+    try {
+      await Notification.create({
+        user: residentId,
+        society: flat.society,
+        type: NotificationType.NOTICE_PUBLISHED, // Resident general category
+        title: '🏠 Flat Assigned',
+        body: `Welcome! Your resident profile is now linked to Flat ${flat.flatNumber}.`,
+        data: { flatId: flatId },
+      });
+    } catch (err) {
+      console.error('Failed to notify resident of flat assignment:', err);
+    }
+
+    return updatedResident;
   }
 }
 

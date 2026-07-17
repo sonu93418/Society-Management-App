@@ -40,7 +40,17 @@ export default function PreApproveScreen() {
       return;
     }
 
-    const flatId = typeof user?.flat === 'object' ? user.flat._id : user?.flat;
+    if (name.trim().length < 2) {
+      Alert.alert('Error', 'Visitor name must be at least 2 characters long');
+      return;
+    }
+
+    if (phone.trim().length < 10) {
+      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    const flatId = typeof user?.flat === 'object' ? (user.flat?._id || (user.flat as any)?.id) : user?.flat;
     if (!flatId) {
       Alert.alert('Error', 'No flat assigned to your profile. Please contact the administrator.');
       return;
@@ -65,7 +75,8 @@ export default function PreApproveScreen() {
           setCreatedPass(res?.data || res);
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to pre-approve visitor');
+          const message = err?.response?.data?.message || err?.message || 'Failed to pre-approve visitor';
+          Alert.alert('Error', message);
         },
       }
     );
@@ -171,12 +182,24 @@ export default function PreApproveScreen() {
           />
 
           <Button
-            title="Done"
-            onPress={() => router.back()}
+            title="Done & View History"
+            onPress={() => {
+              setCreatedPass(null);
+              setName('');
+              setPhone('');
+              setPurpose('');
+              setVehicleNumber('');
+              setSelectedType('guest');
+              setValidDays(1);
+              setCount(1);
+              // Clean redirect to main visitors screen so they see their new entry
+              router.replace('/(resident)/visitors');
+            }}
             fullWidth
             size="lg"
-            variant="secondary"
+            variant="outline"
             style={{ marginTop: Spacing.md }}
+            icon={<Ionicons name="checkmark-circle-outline" size={20} color={Colors.primary} />}
           />
 
           <View style={{ height: Spacing['3xl'] }} />

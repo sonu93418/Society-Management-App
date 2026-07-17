@@ -27,6 +27,7 @@ interface PollData {
 import { usePolls, useVote } from '../../hooks/useCommunity';
 import { ActivityIndicator } from 'react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useSuccessModal } from '../../components/ui/SuccessModal';
 
 export default function PollsScreen() {
   const { data: response, isLoading, refetch } = usePolls();
@@ -34,12 +35,26 @@ export default function PollsScreen() {
 
   const polls = response?.data || [];
 
+  const { showSuccess } = useSuccessModal();
+
   const handleVote = (pollId: string, optionIndex: number) => {
+    const poll = polls.find(p => p._id === pollId);
+    const optionText = poll?.options[optionIndex]?.text || '';
+    
     voteMutation.mutate(
       { pollId, optionIndex },
       {
         onSuccess: () => {
-          Alert.alert('Vote Recorded', 'Your vote has been submitted successfully!');
+          showSuccess({
+            title: '🗳️ Vote Submitted!',
+            message: 'Your opinion has been successfully recorded. Thank you for contributing to society decisions.',
+            taskType: 'poll_voted',
+            details: [
+              { label: 'Poll Question', value: poll?.title || 'Opinion Poll' },
+              { label: 'Your Choice', value: optionText },
+              { label: 'Total Votes', value: String((poll?.totalVotes || 0) + 1) },
+            ],
+          });
           refetch();
         },
         onError: (err: any) => {

@@ -42,6 +42,23 @@ export class TicketService {
       society: input.societyId,
     });
 
+    // Notify admins about new complaint
+    try {
+      const admins = await User.find({ society: input.societyId, role: 'admin', isActive: true });
+      for (const admin of admins) {
+        await Notification.create({
+          user: admin._id,
+          society: input.societyId,
+          type: NotificationType.TICKET_CREATED,
+          title: '🔧 New Complaint Raised',
+          body: `A new complaint "${ticket.title}" has been registered.`,
+          data: { ticketId: ticket._id.toString() },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to notify admins of new ticket:', err);
+    }
+
     return ticket;
   }
 
@@ -99,13 +116,16 @@ export class TicketService {
     await ticket.save();
 
     // Notify resident
+    const isResolved = status === TicketStatus.RESOLVED;
     await Notification.create({
       user: ticket.resident,
       society: ticket.society,
-      type: NotificationType.TICKET_UPDATED,
-      title: 'Complaint Updated',
-      body: `Your complaint "${ticket.title}" status changed to ${status}.`,
-      data: { ticketId: ticket._id },
+      type: isResolved ? NotificationType.TICKET_RESOLVED : NotificationType.TICKET_UPDATED,
+      title: isResolved ? '🎉 Complaint Resolved!' : 'Complaint Updated',
+      body: isResolved 
+        ? `Good news! Your complaint "${ticket.title}" has been resolved.` 
+        : `Your complaint "${ticket.title}" status changed to ${status}.`,
+      data: { ticketId: ticket._id.toString() },
     });
 
     return ticket;
@@ -121,6 +141,37 @@ export class TicketService {
       message,
       images: images || [],
     });
+
+    // Notify the other party about the reply
+    try {
+      const user = await User.findById(userId);
+      const isResident = user?.role === 'resident';
+
+      if (isResident) {
+        const admins = await User.find({ society: ticket.society, role: 'admin', isActive: true });
+        for (const admin of admins) {
+          await Notification.create({
+            user: admin._id,
+            society: ticket.society,
+            type: NotificationType.TICKET_UPDATED,
+            title: '💬 New Reply on Ticket',
+            body: `Resident replied on "${ticket.title}": "${message.substring(0, 40)}${message.length > 40 ? '...' : ''}"`,
+            data: { ticketId: ticket._id.toString() },
+          });
+        }
+      } else {
+        await Notification.create({
+          user: ticket.resident,
+          society: ticket.society,
+          type: NotificationType.TICKET_UPDATED,
+          title: '💬 New Reply on Ticket',
+          body: `Admin/Staff replied on "${ticket.title}": "${message.substring(0, 40)}${message.length > 40 ? '...' : ''}"`,
+          data: { ticketId: ticket._id.toString() },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to notify party of new ticket reply:', err);
+    }
 
     return reply;
   }

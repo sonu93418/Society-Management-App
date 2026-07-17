@@ -6,6 +6,8 @@ import { initializeSocket } from './socket';
 import { initializeFirebase } from './config/firebase';
 import { logger } from './utils/logger';
 
+import { notificationQueueService } from './services/notificationQueue.service';
+
 const startServer = async (): Promise<void> => {
   try {
     // Initialize Firebase Admin SDK (for push notifications)
@@ -19,6 +21,9 @@ const startServer = async (): Promise<void> => {
 
     // Initialize Socket.IO
     initializeSocket(server);
+
+    // Start background notification queue retry worker
+    notificationQueueService.startCronWorker();
 
     // Start listening
     server.listen(env.PORT, () => {

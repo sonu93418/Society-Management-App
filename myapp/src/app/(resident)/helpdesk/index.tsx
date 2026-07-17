@@ -14,6 +14,7 @@ import type { TicketCategory, TicketPriority } from '../../../types/models';
 
 import { useMyTickets, useCreateTicket } from '../../../hooks/useCommunity';
 import { ActivityIndicator } from 'react-native';
+import { useSuccessModal } from '../../../components/ui/SuccessModal';
 
 const categories: { key: TicketCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'plumbing', label: 'Plumbing', icon: 'water-outline' },
@@ -36,6 +37,7 @@ const priorities: { key: TicketPriority; label: string; color: string }[] = [
 
 export default function HelpdeskScreen() {
   const user = useAuthStore((s) => s.user);
+  const { showSuccess } = useSuccessModal();
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -53,9 +55,19 @@ export default function HelpdeskScreen() {
       return;
     }
 
-    const flatId = typeof user?.flat === 'object' ? user.flat?._id : user?.flat;
+    if (title.trim().length < 5) {
+      Alert.alert('Error', 'Title must be at least 5 characters long');
+      return;
+    }
+
+    if (description.trim().length < 10) {
+      Alert.alert('Error', 'Description must be at least 10 characters long');
+      return;
+    }
+
+    const flatId = typeof user?.flat === 'object' ? (user.flat?._id || (user.flat as any)?.id) : user?.flat;
     if (!flatId) {
-      Alert.alert('Error', 'No flat is associated with your account');
+      Alert.alert('Error', 'No flat is associated with your resident account. Please ensure you have assigned a flat to your profile.');
       return;
     }
 
@@ -68,8 +80,18 @@ export default function HelpdeskScreen() {
         flatId: flatId,
       },
       {
-        onSuccess: () => {
-          Alert.alert('Success', 'Complaint raised successfully! You will be notified of updates.');
+        onSuccess: (res: any) => {
+          const categoryName = categories.find(c => c.key === selectedCategory)?.label || String(selectedCategory);
+          showSuccess({
+            title: '📝 Complaint Filed',
+            message: 'Your helpdesk ticket has been successfully registered. The maintenance team will be assigned shortly.',
+            taskType: 'ticket_created',
+            details: [
+              { label: 'Issue', value: title.trim() },
+              { label: 'Category', value: categoryName },
+              { label: 'Priority', value: selectedPriority.toUpperCase() },
+            ],
+          });
           setShowCreate(false);
           setTitle('');
           setDescription('');
@@ -77,7 +99,8 @@ export default function HelpdeskScreen() {
           refetch();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.message || 'Failed to create ticket');
+          const message = err?.response?.data?.message || err?.message || 'Failed to create ticket';
+          Alert.alert('Error', message);
         },
       }
     );

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -23,6 +24,7 @@ import { authApi } from '../../api/auth.api';
 import { communityApi } from '../../api/community.api';
 import { getApiError } from '../../api/client';
 import type { Tower, Flat } from '../../types/models';
+import { useSuccessModal } from '../../components/ui/SuccessModal';
 
 export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
@@ -38,6 +40,42 @@ export default function ProfileScreen() {
   const [loadingTowers, setLoadingTowers] = useState(false);
   const [loadingFlats, setLoadingFlats] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showNotificationPreferences, setShowNotificationPreferences] = useState(false);
+
+  const handleTogglePreference = async (key: string) => {
+    if (!user) return;
+    const currentPrefs = user.notificationPreferences || {
+      visitor: true,
+      complaint: true,
+      notice: true,
+      booking: true,
+      payment: true,
+      poll: true,
+      marketing: true,
+      emergency: true,
+    };
+    const updatedValue = !(currentPrefs as any)[key];
+    const newPrefs = { ...currentPrefs, [key]: updatedValue };
+
+    // Update local store immediately for instant UI feedback
+    setUser({
+      ...user,
+      notificationPreferences: newPrefs,
+    });
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      await authApi.updateNotificationPreferences({ [key]: updatedValue });
+    } catch (err) {
+      // Revert on error
+      setUser({
+        ...user,
+        notificationPreferences: currentPrefs,
+      });
+      Alert.alert('Error', 'Failed to update preferences. Please check your network connection.');
+    }
+  };
 
   const getFlatDisplay = () => {
     if (!user?.flat) return 'Not Assigned';
@@ -67,7 +105,9 @@ export default function ProfileScreen() {
     setLoadingFlats(true);
     try {
       const res = await communityApi.getPublicFlats({ towerId });
-      setFlats(res.data || []);
+      // Only show vacant (unoccupied) flats in self-assign modal
+      const vacantFlats = (res.data || []).filter((f: any) => !f.isOccupied);
+      setFlats(vacantFlats);
     } catch (err) {
       Alert.alert('Error', 'Failed to load flats: ' + getApiError(err));
     } finally {
@@ -96,6 +136,8 @@ export default function ProfileScreen() {
     setSelectedFlat(flat);
   };
 
+  const { showSuccess } = useSuccessModal();
+
   const handleConfirmFlat = async () => {
     if (!selectedFlat) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -104,11 +146,21 @@ export default function ProfileScreen() {
       const res = await authApi.assignFlat(selectedFlat._id || (selectedFlat as any).id);
       if (res.success && res.data) {
         setUser(res.data);
-        Alert.alert('Success', 'Flat assigned successfully!');
         setModalVisible(false);
+        showSuccess({
+          title: '🏠 Flat Linked!',
+          message: `You have successfully linked Flat ${selectedTower?.name}-${selectedFlat.flatNumber} to your profile.`,
+          taskType: 'flat_assigned',
+          details: [
+            { label: 'Tower', value: selectedTower?.name || '—' },
+            { label: 'Flat Number', value: selectedFlat.flatNumber },
+            { label: 'Flat Type', value: selectedFlat.type },
+          ],
+        });
       }
-    } catch (err) {
-      Alert.alert('Error', getApiError(err));
+    } catch (err: any) {
+      const message = err?.response?.data?.message || getApiError(err);
+      Alert.alert('Error', message);
     } finally {
       setSubmitting(false);
     }
@@ -183,9 +235,12 @@ export default function ProfileScreen() {
               <Text style={styles.infoLabel}>Flat</Text>
               <View style={styles.flatValueContainer}>
                 <Text style={styles.infoValue}>{getFlatDisplay()}</Text>
-                <TouchableOpacity onPress={handleOpenAssignModal} style={styles.editFlatBtn}>
-                  <Text style={styles.editFlatText}>{user?.flat ? 'Change' : 'Assign'}</Text>
-                </TouchableOpacity>
+                {/* Only allow self-assign if flat is not yet assigned */}
+                {!user?.flat && (
+                  <TouchableOpacity onPress={handleOpenAssignModal} style={styles.editFlatBtn}>
+                    <Text style={styles.editFlatText}>Assign</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -213,11 +268,147 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
           </TouchableOpacity>
           <View style={styles.separator} />
-          <TouchableOpacity style={styles.settingsItem}>
+          <TouchableOpacity
+            style={styles.settingsItem}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowNotificationPreferences(!showNotificationPreferences);
+            }}
+          >
             <Ionicons name="notifications-outline" size={22} color={Colors.text} />
-            <Text style={styles.settingsLabel}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+            <Text style={styles.settingsLabel}>Notifications Preferences</Text>
+            <Ionicons
+              name={showNotificationPreferences ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={Colors.textTertiary}
+            />
           </TouchableOpacity>
+
+          {showNotificationPreferences && (
+            <View style={styles.preferencesContainer}>
+              <View style={styles.separator} />
+              
+              {/* Visitor Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Visitor Alerts</Text>
+                  <Text style={styles.prefDesc}>Visitor requests and entry clearances</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.visitor !== false}
+                  onValueChange={() => handleTogglePreference('visitor')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.visitor !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Helpdesk Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Complaint Updates</Text>
+                  <Text style={styles.prefDesc}>Status alerts for helpdesk tickets</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.complaint !== false}
+                  onValueChange={() => handleTogglePreference('complaint')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.complaint !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Notice Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Notice Board</Text>
+                  <Text style={styles.prefDesc}>Announcements and management circulars</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.notice !== false}
+                  onValueChange={() => handleTogglePreference('notice')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.notice !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Booking Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Amenity Bookings</Text>
+                  <Text style={styles.prefDesc}>Confirmations and reminders for bookings</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.booking !== false}
+                  onValueChange={() => handleTogglePreference('booking')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.booking !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Payment Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Maintenance Payments</Text>
+                  <Text style={styles.prefDesc}>Invoices, due alerts, and payment receipts</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.payment !== false}
+                  onValueChange={() => handleTogglePreference('payment')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.payment !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Poll Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Community Polls</Text>
+                  <Text style={styles.prefDesc}>New voting polls and final results</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.poll !== false}
+                  onValueChange={() => handleTogglePreference('poll')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.poll !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Marketing Toggle */}
+              <View style={styles.prefRow}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={styles.prefLabel}>Promotional Alerts</Text>
+                  <Text style={styles.prefDesc}>Offers and neighborhood marketing digests</Text>
+                </View>
+                <Switch
+                  value={user?.notificationPreferences?.marketing !== false}
+                  onValueChange={() => handleTogglePreference('marketing')}
+                  trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+                  thumbColor={Platform.OS === 'ios' ? undefined : (user?.notificationPreferences?.marketing !== false ? Colors.primary : '#F1F5F9')}
+                />
+              </View>
+              <View style={styles.separator} />
+
+              {/* Emergency Toggle (Always Enabled) */}
+              <View style={[styles.prefRow, { opacity: 0.8 }]}>
+                <View style={styles.prefTextContainer}>
+                  <Text style={[styles.prefLabel, { color: Colors.danger }]}>🚨 Emergency Alerts</Text>
+                  <Text style={styles.prefDesc}>Security emergencies and evacuation circulars</Text>
+                </View>
+                <Switch
+                  value={true}
+                  disabled={true}
+                  trackColor={{ false: '#CBD5E1', true: '#FDA4AF' }}
+                  thumbColor={Colors.danger}
+                />
+              </View>
+            </View>
+          )}
+
           <View style={styles.separator} />
           <TouchableOpacity style={styles.settingsItem}>
             <Ionicons name="help-circle-outline" size={22} color={Colors.text} />
@@ -284,7 +475,9 @@ export default function ProfileScreen() {
                         <ActivityIndicator size="small" color={Colors.primary} />
                       </View>
                     ) : flats.length === 0 ? (
-                      <Text style={styles.emptyText}>No available flats found in this tower.</Text>
+                      <Text style={styles.emptyText}>
+                        {loadingFlats ? '' : 'All flats in this tower are already occupied. Please contact your admin.'}
+                      </Text>
                     ) : (
                       <FlatList
                         data={flats}
@@ -364,6 +557,34 @@ const styles = StyleSheet.create({
   settingsCard: { marginBottom: Spacing.lg, padding: Spacing.sm },
   settingsItem: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md },
   settingsLabel: { ...Typography.bodyMedium, color: Colors.text, flex: 1, marginLeft: Spacing.md },
+  preferencesContainer: {
+    paddingHorizontal: Spacing.sm,
+    backgroundColor: '#F8FAFC',
+    borderRadius: BorderRadius.xl,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  prefRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
+  prefTextContainer: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  prefLabel: {
+    ...Typography.bodyMedium,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  prefDesc: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: Spacing.lg, backgroundColor: Colors.dangerLight, borderRadius: BorderRadius['3xl'], gap: Spacing.sm, marginBottom: Spacing.lg },
   logoutText: { ...Typography.button, color: Colors.danger },
   version: { ...Typography.caption, color: Colors.textTertiary, textAlign: 'center' },
