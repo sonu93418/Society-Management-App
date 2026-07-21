@@ -18,7 +18,7 @@ export const useSocietyPendingVisitors = () => {
   return useQuery({
     queryKey: ['visitors', 'society', 'pending'] as const,
     queryFn: () => visitorApi.getSocietyPending(),
-    refetchInterval: 10000, // poll every 10s
+    staleTime: 1000 * 60 * 2,
   });
 };
 
@@ -26,7 +26,7 @@ export const useInsideVisitors = () => {
   return useQuery({
     queryKey: ['visitors', 'society', 'inside'] as const,
     queryFn: () => visitorApi.getInside(),
-    refetchInterval: 15000,
+    staleTime: 1000 * 60 * 2,
   });
 };
 
@@ -34,7 +34,7 @@ export const useVisitorStats = () => {
   return useQuery({
     queryKey: ['visitors', 'stats'] as const,
     queryFn: () => visitorApi.getStats(),
-    refetchInterval: 15000,
+    staleTime: 1000 * 60 * 2,
   });
 };
 
@@ -42,7 +42,7 @@ export const usePendingVisitors = () => {
   return useQuery({
     queryKey: QUERY_KEYS.visitorsPending,
     queryFn: () => visitorApi.getPending(),
-    refetchInterval: 10000, // poll every 10s for pending visitors
+    staleTime: 1000 * 60 * 2,
   });
 };
 

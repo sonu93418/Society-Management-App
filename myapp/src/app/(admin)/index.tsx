@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Modal, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme'
 import { Card } from '../../components/ui/Card';
 import { useAuthStore } from '../../store/auth.store';
 import { router } from 'expo-router';
+import { authApi } from '../../api/auth.api';
 
 interface DashStatProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -47,6 +48,24 @@ import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead 
 
 export default function AdminDashboard() {
   const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    // Refresh profile on mount to sync latest society details
+    const refreshProfile = async () => {
+      try {
+        const res = await authApi.getProfile();
+        if (res.success && res.data) {
+          const current = useAuthStore.getState().user;
+          if (JSON.stringify(current) !== JSON.stringify(res.data)) {
+            useAuthStore.getState().setUser(res.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to refresh profile:', err);
+      }
+    };
+    refreshProfile();
+  }, []);
   
   const { data: statsResponse, isLoading, refetch } = useAdminDashboard();
   const { data: notifRes, refetch: refetchNotifs } = useNotifications();
@@ -222,7 +241,7 @@ export default function AdminDashboard() {
 
                   return (
                     <TouchableOpacity
-                      style={[styles.notifItem, !item.isRead && styles.unreadNotif]}
+                      style={[styles.notifItem, !item.isRead && styles.unreadNotif, { borderLeftColor: iconColor }]}
                       onPress={() => !item.isRead && markReadMutation.mutate(item._id)}
                       activeOpacity={item.isRead ? 1 : 0.7}
                     >
@@ -279,16 +298,36 @@ const styles = StyleSheet.create({
   markAllText: { ...Typography.captionMedium, color: Colors.primary },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing['5xl'] },
   emptyText: { ...Typography.bodyMedium, color: Colors.textTertiary, marginTop: Spacing.md },
-  notifItem: { flexDirection: 'row', padding: Spacing.md, borderRadius: BorderRadius.xl, marginBottom: Spacing.sm },
-  unreadNotif: { backgroundColor: Colors.primaryGhost },
-  notifIconContainer: { width: 40, height: 40, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
+  notifItem: { 
+    flexDirection: 'row', 
+    padding: Spacing.md, 
+    borderRadius: BorderRadius.lg, 
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderLeftWidth: 4,
+  },
+  unreadNotif: { 
+    backgroundColor: 'rgba(79, 70, 229, 0.03)',
+    borderColor: 'rgba(79, 70, 229, 0.12)',
+  },
+  notifIconContainer: { 
+    width: 38, 
+    height: 38, 
+    borderRadius: BorderRadius.md, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: Spacing.md,
+    marginTop: 2,
+  },
   notifTextContent: { flex: 1 },
   notifRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   notifItemTitle: { ...Typography.bodyMedium, color: Colors.textSecondary },
   unreadText: { color: Colors.text, fontWeight: '700' },
   unreadBadge: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary },
-  notifBody: { ...Typography.bodySm, color: Colors.textSecondary, marginTop: 4 },
-  notifDate: { ...Typography.caption, color: Colors.textTertiary, marginTop: 4 },
+  notifBody: { ...Typography.bodySm, color: Colors.textSecondary, marginTop: 4, lineHeight: 16 },
+  notifDate: { ...Typography.caption, color: Colors.textTertiary, marginTop: 6 },
 
   welcomeCard: { backgroundColor: Colors.primary, marginBottom: Spacing.xl },
   welcomeContent: { marginBottom: Spacing.xl },

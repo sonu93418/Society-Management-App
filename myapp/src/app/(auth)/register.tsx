@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -27,19 +28,62 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<'resident' | 'guard'>('resident');
   const [loading, setLoading] = useState(false);
+
+  const [societies, setSocieties] = useState<any[]>([]);
+  const [loadingSocieties, setLoadingSocieties] = useState(true);
+  const [selectedSociety, setSelectedSociety] = useState<any | null>(null);
+  const [guardCode, setGuardCode] = useState('');
+
   const setAuth = useAuthStore((s) => s.setAuth);
+
+  useEffect(() => {
+    const loadSocieties = async () => {
+      setLoadingSocieties(true);
+      try {
+        const res = await authApi.getSocieties();
+        if (res.success && res.data) {
+          setSocieties(res.data);
+          if (res.data.length > 0) {
+            setSelectedSociety(res.data[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load societies:', err);
+      } finally {
+        setLoadingSocieties(false);
+      }
+    };
+    loadSocieties();
+  }, []);
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+    if (selectedRole === 'guard' && !guardCode.trim()) {
+      Alert.alert('Error', 'Please enter the Guard Registration Code');
       return;
     }
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+
+    // Validate password strength according to backend Zod requirements
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[@$!%*?&]/.test(password);
+    if (!hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
+      Alert.alert(
+        'Weak Password',
+        'Password must contain at least:\n• 1 uppercase letter\n• 1 lowercase letter\n• 1 number\n• 1 special character (@$!%*?&)'
+      );
       return;
     }
 
@@ -51,7 +95,8 @@ export default function RegisterScreen() {
         phone: phone.trim(),
         password,
         role: selectedRole,
-        societyId: 'DEMO_SOCIETY_ID', // Will be replaced with actual society
+        societyId: selectedSociety?._id || 'DEMO_SOCIETY',
+        registrationCode: selectedRole === 'guard' ? guardCode.trim() : undefined,
       });
       if (response.success && response.data) {
         const { user, accessToken, refreshToken } = response.data;
@@ -68,7 +113,7 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <StatusBar style="dark" />
@@ -76,6 +121,7 @@ export default function RegisterScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={true}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -109,19 +155,75 @@ export default function RegisterScreen() {
 
         {/* Form */}
         <View style={styles.form}>
-          <Input label="Full Name" placeholder="Enter your name" leftIcon="person-outline" value={name} onChangeText={setName} />
-          <Input label="Email" placeholder="Enter your email" leftIcon="mail-outline" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          <Input label="Phone" placeholder="Enter phone number" leftIcon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <Input label="Password" placeholder="Min. 6 characters" leftIcon="lock-closed-outline" value={password} onChangeText={setPassword} isPassword />
-          <Input label="Confirm Password" placeholder="Re-enter password" leftIcon="lock-closed-outline" value={confirmPassword} onChangeText={setConfirmPassword} isPassword />
+          <Input label="Full Name *" placeholder="Enter your name" leftIcon="person-outline" value={name} onChangeText={setName} />
+          <Input label="Email *" placeholder="Enter your email" leftIcon="mail-outline" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <Input label="Phone *" placeholder="Enter phone number" leftIcon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+
+          {/* Society Selector */}
+          <View style={{ marginBottom: Spacing.md }}>
+            <Text style={styles.fieldLabel}>Select Society *</Text>
+            {loadingSocieties ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.loadingText}>Fetching societies...</Text>
+              </View>
+            ) : societies.length > 0 ? (
+              <View style={styles.societySelector}>
+                {societies.map((soc) => (
+                  <TouchableOpacity
+                    key={soc._id}
+                    style={[styles.societyOption, selectedSociety?._id === soc._id && styles.societyOptionActive]}
+                    onPress={() => setSelectedSociety(soc)}
+                  >
+                    <Ionicons
+                      name={selectedSociety?._id === soc._id ? 'checkmark-circle' : 'business-outline'}
+                      size={16}
+                      color={selectedSociety?._id === soc._id ? Colors.white : Colors.textSecondary}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.societyOptionText, selectedSociety?._id === soc._id && styles.societyOptionTextActive]}>
+                      {soc.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noSocietyText}>Default Society selected</Text>
+            )}
+          </View>
+
+          {/* Guard Registration Code section */}
+          {selectedRole === 'guard' && (
+            <View style={styles.guardCodeContainer}>
+              <Input
+                label="Guard Registration Code *"
+                placeholder="Enter registration code (e.g. guard123)"
+                leftIcon="shield-checkmark-outline"
+                value={guardCode}
+                onChangeText={setGuardCode}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.defaultCodeBtn}
+                onPress={() => setGuardCode('guard123')}
+              >
+                <Ionicons name="key-outline" size={14} color={Colors.primary} />
+                <Text style={styles.defaultCodeText}>Use default code (guard123)</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <Input label="Password *" placeholder="Min 8 chars, mixed case + symbol" leftIcon="lock-closed-outline" value={password} onChangeText={setPassword} isPassword />
+          <Input label="Confirm Password *" placeholder="Re-enter password" leftIcon="lock-closed-outline" value={confirmPassword} onChangeText={setConfirmPassword} isPassword />
 
           <Button
-            title="Create Account"
+            title={selectedRole === 'guard' ? 'Register Security Guard' : 'Create Account'}
             onPress={handleRegister}
             loading={loading}
             fullWidth
             size="lg"
-            icon={<Ionicons name="person-add-outline" size={20} color={Colors.white} />}
+            icon={<Ionicons name={selectedRole === 'guard' ? 'shield-checkmark-outline' : 'person-add-outline'} size={20} color={Colors.white} />}
+            style={{ marginTop: Spacing.md }}
           />
         </View>
 
@@ -138,7 +240,7 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  scrollContent: { flexGrow: 1, paddingHorizontal: Spacing['2xl'], paddingTop: Spacing['4xl'], paddingBottom: Spacing['3xl'] },
+  scrollContent: { flexGrow: 1, paddingHorizontal: Spacing['2xl'], paddingTop: Spacing['3xl'], paddingBottom: 100 },
   header: { marginBottom: Spacing['2xl'] },
   backButton: { width: 40, height: 40, borderRadius: BorderRadius.md, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center', ...Shadows.xs, marginBottom: Spacing.lg },
   title: { ...Typography.h2, color: Colors.text },
@@ -154,4 +256,17 @@ const styles = StyleSheet.create({
   loginLink: { marginTop: Spacing.xl, alignItems: 'center' },
   loginText: { ...Typography.body, color: Colors.textSecondary },
   loginHighlight: { color: Colors.primary, fontWeight: '600' },
+  
+  fieldLabel: { ...Typography.label, color: Colors.text, marginBottom: Spacing.xs, marginTop: Spacing.xs },
+  societySelector: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.sm, marginTop: Spacing.xs },
+  societyOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: BorderRadius.full, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.white },
+  societyOptionActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  societyOptionText: { ...Typography.captionMedium, color: Colors.textSecondary },
+  societyOptionTextActive: { color: Colors.white },
+  loadingContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: Spacing.xs },
+  loadingText: { ...Typography.caption, color: Colors.textSecondary },
+  noSocietyText: { ...Typography.caption, color: Colors.textTertiary, fontStyle: 'italic', marginVertical: Spacing.xs },
+  guardCodeContainer: { marginBottom: Spacing.sm },
+  defaultCodeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: -Spacing.xs, marginBottom: Spacing.sm },
+  defaultCodeText: { ...Typography.captionMedium, color: Colors.primary },
 });

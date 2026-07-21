@@ -3,6 +3,7 @@ import authRoutes from './auth.routes';
 import visitorRoutes from './visitor.routes';
 import communityRoutes from './community.routes';
 import adminRoutes from './admin.routes';
+import superAdminRoutes from './superAdmin.routes';
 
 const router = Router();
 
@@ -10,6 +11,8 @@ router.use('/auth', authRoutes);
 router.use('/visitors', visitorRoutes);
 router.use('/community', communityRoutes);
 router.use('/admin', adminRoutes);
+router.use('/super-admin', superAdminRoutes);
+
 
 // Guard-specific search route (reuses admin service)
 import { authenticate } from '../middlewares/auth.middleware';

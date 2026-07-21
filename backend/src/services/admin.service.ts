@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { Society } from '../models/Society';
 import { Tower } from '../models/Tower';
@@ -56,8 +57,15 @@ export class AdminService {
 
   // Tower management
   async createTower(data: { name: string; totalFloors: number; societyId: string }) {
+    if (!data.societyId || !mongoose.Types.ObjectId.isValid(data.societyId)) {
+      throw new AppError('Society ID is invalid or missing. Please log out and sign in again.', 400);
+    }
+    const existingTower = await Tower.findOne({ society: data.societyId, name: data.name.trim(), isActive: true });
+    if (existingTower) {
+      throw new AppError(`Tower "${data.name}" already exists in this society`, 409);
+    }
     const tower = await Tower.create({
-      name: data.name,
+      name: data.name.trim(),
       totalFloors: data.totalFloors,
       society: data.societyId,
     });
@@ -66,6 +74,9 @@ export class AdminService {
   }
 
   async getTowers(societyId: string) {
+    if (!societyId || !mongoose.Types.ObjectId.isValid(societyId)) {
+      return [];
+    }
     return Tower.find({ society: societyId, isActive: true }).sort({ name: 1 });
   }
 
@@ -81,8 +92,15 @@ export class AdminService {
 
   // Flat management
   async createFlat(data: { flatNumber: string; floor: number; towerId: string; type?: string; area?: number; societyId: string }) {
+    if (!data.societyId || !mongoose.Types.ObjectId.isValid(data.societyId)) {
+      throw new AppError('Society ID is invalid or missing. Please log out and sign in again.', 400);
+    }
+    const existingFlat = await Flat.findOne({ society: data.societyId, tower: data.towerId, flatNumber: data.flatNumber.trim(), isActive: true });
+    if (existingFlat) {
+      throw new AppError(`Flat "${data.flatNumber}" already exists in this tower`, 409);
+    }
     const flat = await Flat.create({
-      flatNumber: data.flatNumber,
+      flatNumber: data.flatNumber.trim(),
       floor: data.floor,
       tower: data.towerId,
       society: data.societyId,

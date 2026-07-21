@@ -29,9 +29,14 @@ module.exports = {
       package: "com.portl.app",
       versionCode: 1,
       predictiveBackGestureEnabled: false,
-      // EAS Decrypts the GOOGLE_SERVICES_JSON file secret and injects its local path
-      // as process.env.GOOGLE_SERVICES_JSON. Local development falls back to "./google-services.json".
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json"
+      // Only set googleServicesFile if the file exists to prevent CI/CD build crashes when the secret is not configured yet.
+      googleServicesFile: (function() {
+        const fs = require('fs');
+        const path = require('path');
+        if (process.env.GOOGLE_SERVICES_JSON) return process.env.GOOGLE_SERVICES_JSON;
+        const localPath = path.resolve(__dirname, './google-services.json');
+        return fs.existsSync(localPath) ? "./google-services.json" : undefined;
+      })()
     },
     web: {
       output: "static",
@@ -83,8 +88,8 @@ module.exports = {
       eas: {
         projectId: "8711fdcc-1d94-40b2-9c61-ee508b4c4b8c"
       },
-      apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://10.181.99.148:5000/api/v1",
-      socketUrl: process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace("/api/v1", "") : "http://10.181.99.148:5000"
+      apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://10.69.91.148:5000/api/v1",
+      socketUrl: process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace("/api/v1", "") : "http://10.69.91.148:5000"
     }
   }
 };

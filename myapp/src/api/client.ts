@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-  'http://10.181.99.148:5000/api/v1';
+  'http://10.69.91.148:5000/api/v1';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

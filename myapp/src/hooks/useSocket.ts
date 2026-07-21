@@ -5,13 +5,19 @@ import { useAuthStore } from '../store/auth.store';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Platform } from 'react-native';
 
-// Read socket URL from app.json extra config (set per environment)
-const SOCKET_URL =
-  (Constants.expoConfig?.extra?.socketUrl as string | undefined) ??
-  'http://10.181.99.148:5000';
+// Derive socket URL dynamically from EXPO_PUBLIC_API_URL (or app.json extra config)
+const getSocketUrl = (): string => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, '');
+  }
+  return (Constants.expoConfig?.extra?.socketUrl as string | undefined) ?? 'http://10.69.91.148:5000';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
+  const currentTokenRef = useRef<string | null>(null);
   const token = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
@@ -21,14 +27,27 @@ export const useSocket = () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
+        currentTokenRef.current = null;
       }
       return;
     }
 
-    // Initialize socket connection with token
+    // Skip redundant reconnection if socket is already initialized with active token
+    if (socketRef.current && currentTokenRef.current === token) {
+      return;
+    }
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
+    currentTokenRef.current = token;
     const socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'], // Use WebSocket transport for React Native stability
+      transports: ['websocket', 'polling'],
+      timeout: 20000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     });
 
     socketRef.current = socket;
@@ -42,7 +61,8 @@ export const useSocket = () => {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('🔌 Socket connection error:', error.message);
+      // Log connection warnings gracefully without surfacing red error overlays for transient timeouts
+      console.warn('🔌 Socket connection warning:', error.message);
       if (error.message === 'Invalid token' || error.message === 'Authentication required') {
         console.warn('⚠️ Stale or invalid session token detected. Logging out...');
         useAuthStore.getState().logout().catch(console.error);

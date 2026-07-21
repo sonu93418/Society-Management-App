@@ -31,6 +31,21 @@ export default function ProfileScreen() {
   const logout = useAuthStore((s) => s.logout);
   const setUser = useAuthStore((s) => s.setUser);
 
+  useEffect(() => {
+    // Refresh user profile details from the server to ensure latest flat/society details are shown
+    const fetchLatestProfile = async () => {
+      try {
+        const res = await authApi.getProfile();
+        if (res.success && res.data) {
+          setUser(res.data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch latest profile:', err);
+      }
+    };
+    fetchLatestProfile();
+  }, []);
+
   // Flat assignment state
   const [modalVisible, setModalVisible] = useState(false);
   const [towers, setTowers] = useState<Tower[]>([]);
@@ -248,8 +263,12 @@ export default function ProfileScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="location-outline" size={20} color={Colors.textSecondary} />
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Society</Text>
-              <Text style={styles.infoValue}>{typeof user?.society === 'object' ? user.society.name : 'Portl Residency'}</Text>
+              <Text style={styles.infoLabel}>Society Location</Text>
+              <Text style={styles.infoValue}>
+                {typeof user?.society === 'object' && user.society
+                  ? `${(user.society as any).name}\n${(user.society as any).address || ''}, ${(user.society as any).city || ''}, ${(user.society as any).state || ''} - ${(user.society as any).pincode || ''}`
+                  : 'Portl Residency\n123 Tech Park Road, Whitefield, Bangalore'}
+              </Text>
             </View>
           </View>
         </Card>

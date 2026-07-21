@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portl Developer Portal & Master Admin</title>
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- DEVELOPER AUTHENTICATION MODAL OVERLAY -->
+  <div id="developer-auth-modal" class="modal-overlay">
+    <div class="auth-card glass-card">
+      <div class="auth-header">
+        <div class="portl-logo-shield">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L3 6V12C3 17.55 7.16 22.74 12 24C16.84 22.74 21 17.55 21 12V6L12 2Z" fill="url(#portl-grad)"/>
+            <path d="M12 6L6 9.5V13.5C6 16.5 9 19.5 12 20.5C15 19.5 18 16.5 18 13.5V9.5L12 6Z" fill="#0F172A"/>
+            <path d="M12 9L9 11V14.5C9 16 10.5 17.5 12 18C13.5 17.5 15 16 15 14.5V11L12 9Z" fill="url(#portl-grad)"/>
+            <defs>
+              <linearGradient id="portl-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#4F46E5"/>
+                <stop offset="1" stop-color="#10B981"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2 class="auth-title">PORTL DEVELOPER PORTAL</h2>
+        <p class="auth-subtitle">Restricted Master System Access</p>
+      </div>
+
+      <form id="developer-login-form">
+        <div class="form-group">
+          <label><i class="fa-solid fa-key"></i> Developer Secret Key</label>
+          <div class="password-input-container">
+            <input type="password" id="dev-secret-key" placeholder="Enter Developer Access Secret (e.g. Sonukumarray@93418)" required autocomplete="current-password">
+            <button type="button" id="toggle-password-btn" class="toggle-password-btn" aria-label="Toggle Password Visibility" title="Show/Hide Password">
+              <i class="fa-solid fa-eye" id="toggle-password-icon"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-lock-open"></i> Unlock Developer Access</button>
+      </form>
+      <div id="auth-error-msg" class="auth-error"></div>
+    </div>
+  </div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="navbar glass-card">
+    <div class="brand">
+      <div class="portl-logo-shield">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L3 6V12C3 17.55 7.16 22.74 12 24C16.84 22.74 21 17.55 21 12V6L12 2Z" fill="url(#portl-grad-nav)"/>
+          <path d="M12 6L6 9.5V13.5C6 16.5 9 19.5 12 20.5C15 19.5 18 16.5 18 13.5V9.5L12 6Z" fill="#0F172A"/>
+          <path d="M12 9L9 11V14.5C9 16 10.5 17.5 12 18C13.5 17.5 15 16 15 14.5V11L12 9Z" fill="url(#portl-grad-nav)"/>
+          <defs>
+            <linearGradient id="portl-grad-nav" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#4F46E5"/>
+              <stop offset="1" stop-color="#10B981"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="title">PORTL DEVELOPER PORTAL</span>
+        <span class="badge"><i class="fa-solid fa-shield-halved"></i> Master Control v2.5</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <button class="nav-tab active" data-tab="tab-analytics"><i class="fa-solid fa-chart-pie"></i> Analytics</button>
+      <button class="nav-tab" data-tab="tab-onboarding"><i class="fa-solid fa-building-circle-check"></i> Onboarding <span id="onboarding-badge" class="pill-count">0</span></button>
+      <button class="nav-tab" data-tab="tab-broadcast"><i class="fa-solid fa-bullhorn"></i> Custom Notification</button>
+      <button class="nav-tab" data-tab="tab-users"><i class="fa-solid fa-users-gear"></i> Master User Data</button>
+    </div>
+    <div class="navbar-right">
+      <div class="server-status">
+        <span class="status-indicator online"></span>
+        <span class="status-text">Connected</span>
+      </div>
+      <button id="btn-lock-portal" class="btn btn-outline-sm" title="Lock Portal"><i class="fa-solid fa-lock"></i> Lock</button>
+    </div>
+  </header>
+
+  <!-- Main Portal Container -->
+  <main class="container" id="main-portal-container" style="display: none;">
+    <!-- TAB 1: ANALYTICS DASHBOARD -->
+    <section id="tab-analytics" class="tab-content active">
+      <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2><i class="fa-solid fa-network-wired text-accent"></i> Platform Master Analytics</h2>
+          <p>Real-time telemetry & metrics across all societies, security gates, and active user collections.</p>
+        </div>
+        <button id="btn-refresh-analytics" class="btn btn-outline-sm" title="Refresh Analytics Metrics"><i class="fa-solid fa-arrows-rotate"></i> Refresh Data</button>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card glass-card">
+          <div class="card-icon bg-indigo"><i class="fa-solid fa-city"></i></div>
+          <div class="card-data">
+            <span class="label">Active Societies</span>
+            <span class="value" id="stat-societies">--</span>
+          </div>
+        </div>
+
+        <div class="metric-card glass-card">
+          <div class="card-icon bg-purple"><i class="fa-solid fa-user-shield"></i></div>
+          <div class="card-data">
+            <span class="label">Society Admins</span>
+            <span class="value" id="stat-admins">--</span>
+          </div>
+        </div>
+
+        <div class="metric-card glass-card">
+          <div class="card-icon bg-emerald"><i class="fa-solid fa-shield-halved"></i></div>
+          <div class="card-data">
+            <span class="label">Security Guards</span>
+            <span class="value" id="stat-guards">--</span>
+          </div>
+        </div>
+
+        <div class="metric-card glass-card">
+          <div class="card-icon bg-blue"><i class="fa-solid fa-house-user"></i></div>
+          <div class="card-data">
+            <span class="label">Total Residents</span>
+            <span class="value" id="stat-residents">--</span>
+          </div>
+        </div>
+
+        <div class="metric-card glass-card">
+          <div class="card-icon bg-amber"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <div class="card-data">
+            <span class="label">Pending Onboarding</span>
+            <span class="value text-warning" id="stat-pending">--</span>
+          </div>
+        </div>
+
+        <div class="metric-card glass-card">
+          <div class="card-icon bg-rose"><i class="fa-solid fa-server"></i></div>
+          <div class="card-data">
+            <span class="label">System Uptime</span>
+            <span class="value text-accent" id="stat-uptime">--</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ONBOARDING REQUESTS -->
+    <section id="tab-onboarding" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-building-user text-accent"></i> Society Onboarding Applications</h2>
+        <p>Review registration applications submitted by prospective society administrators.</p>
+      </div>
+
+      <div class="filter-bar glass-card">
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="pending">Pending Review</button>
+          <button class="filter-btn" data-filter="approved">Approved</button>
+          <button class="filter-btn" data-filter="rejected">Rejected</button>
+          <button class="filter-btn" data-filter="">All Requests</button>
+        </div>
+        <button class="btn btn-outline" id="btn-refresh-onboarding"><i class="fa-solid fa-rotate-right"></i> Refresh List</button>
+      </div>
+
+      <div id="onboarding-cards-container" class="cards-grid">
+        <div class="loading-spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading onboarding requests...</div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CUSTOM NOTIFICATION DISPATCHER -->
+    <section id="tab-broadcast" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-paper-plane text-accent"></i> System Broadcast Dispatcher</h2>
+        <p>Send custom push notifications & emergency alerts to device tokens across societies.</p>
+      </div>
+
+      <div class="broadcast-layout">
+        <form id="broadcast-form" class="broadcast-card glass-card">
+          <div class="form-group">
+            <label><i class="fa-solid fa-heading"></i> Notification Title</label>
+            <input type="text" id="bc-title" placeholder="e.g. System Maintenance Notice" required>
+          </div>
+
+          <div class="form-group">
+            <label><i class="fa-solid fa-message"></i> Message Body</label>
+            <textarea id="bc-message" rows="4" placeholder="Enter custom message to dispatch to devices..." required></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label><i class="fa-solid fa-users"></i> Target Audience</label>
+              <select id="bc-role">
+                <option value="all">🌐 All Platform Users (Admins + Guards + Residents)</option>
+                <option value="resident">👤 Residents Only</option>
+                <option value="guard">🛡️ Security Guards Only</option>
+                <option value="admin">⚙️ Society Admins Only</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label><i class="fa-solid fa-triangle-exclamation"></i> Urgency / Priority</label>
+              <select id="bc-priority">
+                <option value="HIGH">🚨 HIGH (Emergency Alert / Immediate Display)</option>
+                <option value="NORMAL">ℹ️ NORMAL (Standard System Announcement)</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-paper-plane"></i> Dispatch Custom Notification</button>
+        </form>
+
+        <div class="broadcast-preview glass-card">
+          <h3><i class="fa-solid fa-mobile-screen"></i> Live Phone Preview</h3>
+          <div class="phone-mockup">
+            <div class="phone-header">
+              <span class="time">12:00</span>
+              <div class="icons"><i class="fa-solid fa-wifi"></i> <i class="fa-solid fa-battery-full"></i></div>
+            </div>
+            <div class="phone-notification">
+              <div class="notif-header">
+                <span class="app-name"><i class="fa-solid fa-shield"></i> PORTL ALERT</span>
+                <span class="notif-time">Just now</span>
+              </div>
+              <div class="notif-title" id="prev-title">Custom Title Preview</div>
+              <div class="notif-body" id="prev-message">Your custom system broadcast message will appear here on target devices.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: MASTER USER DATA -->
+    <section id="tab-users" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-user-lock text-accent"></i> Master User Data Control</h2>
+        <p>Inspect, manage, and toggle active status for users across `admins`, `guards`, and `residents` MongoDB collections.</p>
+      </div>
+
+      <div class="filter-bar glass-card">
+        <div class="search-input">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="user-search" placeholder="Search by name, email, or phone...">
+        </div>
+        <div class="filter-buttons">
+          <button class="user-role-btn active" data-role="">All Roles</button>
+          <button class="user-role-btn" data-role="resident">Residents</button>
+          <button class="user-role-btn" data-role="guard">Guards</button>
+          <button class="user-role-btn" data-role="admin">Admins</button>
+        </div>
+      </div>
+
+      <div class="table-container glass-card">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>User Name & Email</th>
+              <th>Role</th>
+              <th>Society & Flat</th>
+              <th>Phone</th>
+              <th>Account Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="user-table-body">
+            <tr>
+              <td colspan="6" class="text-center">Loading user records across collections...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Notification System -->
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

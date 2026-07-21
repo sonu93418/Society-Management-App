@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,6 +15,21 @@ export default function AdminProfile() {
   const setUser = useAuthStore((s) => s.setUser);
 
   const [showNotificationPreferences, setShowNotificationPreferences] = useState(false);
+
+  useEffect(() => {
+    // Refresh user profile details from the server to ensure latest society details are shown
+    const fetchLatestProfile = async () => {
+      try {
+        const res = await authApi.getProfile();
+        if (res.success && res.data) {
+          setUser(res.data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch latest profile:', err);
+      }
+    };
+    fetchLatestProfile();
+  }, []);
 
   const handleTogglePreference = async (key: string) => {
     if (!user) return;
@@ -80,15 +95,29 @@ export default function AdminProfile() {
         </Card>
 
         <Card style={styles.societyCard}>
-          <Text style={styles.societyName}>Portl Residency</Text>
-          <Text style={styles.societyAddress}>123 Tech Park Road, Whitefield, Bangalore</Text>
+          <Text style={styles.societyName}>
+            {typeof user?.society === 'object' && user.society ? (user.society as any).name : 'Portl Residency'}
+          </Text>
+          <Text style={styles.societyAddress}>
+            {typeof user?.society === 'object' && user.society 
+              ? `${(user.society as any).address || ''}, ${(user.society as any).city || ''}, ${(user.society as any).state || ''} - ${(user.society as any).pincode || ''}`
+              : '123 Tech Park Road, Whitefield, Bangalore'}
+          </Text>
           <View style={styles.societyStats}>
             <View style={styles.societyStat}>
-              <Text style={styles.societyStatValue}>3</Text>
+              <Text style={styles.societyStatValue}>
+                {typeof user?.society === 'object' && user.society && (user.society as any).totalTowers !== undefined
+                  ? (user.society as any).totalTowers 
+                  : '3'}
+              </Text>
               <Text style={styles.societyStatLabel}>Towers</Text>
             </View>
             <View style={styles.societyStat}>
-              <Text style={styles.societyStatValue}>12</Text>
+              <Text style={styles.societyStatValue}>
+                {typeof user?.society === 'object' && user.society && (user.society as any).totalFlats !== undefined
+                  ? (user.society as any).totalFlats 
+                  : '12'}
+              </Text>
               <Text style={styles.societyStatLabel}>Flats</Text>
             </View>
             <View style={styles.societyStat}>

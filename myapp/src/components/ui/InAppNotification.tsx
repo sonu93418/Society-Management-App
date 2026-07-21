@@ -53,6 +53,7 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
   
   const slideAnim = useRef(new Animated.Value(-150)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(1)).current;
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const showInAppNotification = (notification: InAppNotificationData) => {
@@ -72,22 +73,29 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
       clearTimeout(timeoutRef.current);
     }
 
-    // 4. Animate sliding down from top
+    // 4. Reset progress bar and animate sliding down
+    progressAnim.setValue(1);
+
     Animated.parallel([
       Animated.spring(slideAnim, {
-        toValue: Platform.OS === 'ios' ? 50 : 20,
+        toValue: Platform.OS === 'ios' ? 60 : 30,
         useNativeDriver: true,
-        tension: 50,
-        friction: 8,
+        tension: 40,
+        friction: 7,
       }),
       Animated.timing(opacityAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 250,
         useNativeDriver: true,
+      }),
+      Animated.timing(progressAnim, {
+        toValue: 0,
+        duration: 5500,
+        useNativeDriver: false, // width/interpolations on non-transform props must use false
       }),
     ]).start();
 
-    // 5. Configure 5 second auto-dismiss
+    // 5. Configure 5.5 second auto-dismiss
     timeoutRef.current = setTimeout(() => {
       dismissNotification();
     }, 5500);
@@ -97,12 +105,12 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: -150,
-        duration: 250,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 200,
+        duration: 180,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -158,20 +166,17 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
           ]}
         >
           <TouchableOpacity
-            activeOpacity={0.92}
+            activeOpacity={0.95}
             onPress={handleTap}
             style={[
               styles.card,
               activeNotification.category === 'emergency' && styles.emergencyCard,
             ]}
           >
-            {/* Soft inner glow line simulated by top border */}
-            <View style={styles.cardHeaderGlow} />
-
             <View style={styles.cardContent}>
               {/* Category Icon */}
-              <View style={[styles.iconContainer, { backgroundColor: categoryStyle.color + '18' }]}>
-                <Ionicons name={categoryStyle.icon} size={22} color={categoryStyle.color} />
+              <View style={[styles.iconContainer, { backgroundColor: categoryStyle.color + '15' }]}>
+                <Ionicons name={categoryStyle.icon} size={20} color={categoryStyle.color} />
               </View>
 
               {/* Text Fields */}
@@ -180,7 +185,7 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
                   <Text style={[styles.categoryLabel, { color: categoryStyle.color }]}>
                     {categoryStyle.label.toUpperCase()}
                   </Text>
-                  <Text style={styles.timeLabel}>Just now</Text>
+                  <Text style={styles.timeLabel}>just now</Text>
                 </View>
                 <Text style={styles.titleText} numberOfLines={1}>
                   {activeNotification.title}
@@ -189,17 +194,34 @@ export const InAppNotificationProvider: React.FC<{ children: React.ReactNode }> 
                   {activeNotification.body}
                 </Text>
               </View>
+
+              {/* Compact Close Button */}
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  dismissNotification();
+                }}
+                style={styles.closeIconButton}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="close" size={18} color="#94A3B8" />
+              </TouchableOpacity>
             </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity onPress={handleTap} style={styles.actionBtn}>
-                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>View Details</Text>
-              </TouchableOpacity>
-              <View style={styles.separator} />
-              <TouchableOpacity onPress={dismissNotification} style={styles.actionBtn}>
-                <Text style={styles.closeBtnText}>Dismiss</Text>
-              </TouchableOpacity>
+            {/* Micro-animated countdown progress bar */}
+            <View style={styles.progressBarBg}>
+              <Animated.View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    backgroundColor: categoryStyle.color,
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+              />
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -217,29 +239,23 @@ const styles = StyleSheet.create({
     zIndex: 99999,
   },
   card: {
-    // Claymorphism: soft, transparent light background with inner light highlights and deep outer drop shadow
-    backgroundColor: 'rgba(255, 255, 255, 0.90)',
-    borderRadius: BorderRadius['2xl'],
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.50)',
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     overflow: 'hidden',
     
-    // Outer shadow
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 8,
+    // Premium shadow
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 6,
   },
   emergencyCard: {
-    backgroundColor: 'rgba(254, 242, 242, 0.95)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: '#FEF2F2',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
     shadowColor: '#EF4444',
-  },
-  cardHeaderGlow: {
-    height: 1.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    width: '100%',
   },
   cardContent: {
     flexDirection: 'row',
@@ -247,67 +263,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.xl,
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
   textContainer: {
     flex: 1,
     marginLeft: Spacing.md,
+    marginRight: Spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.xxs,
+    marginBottom: 2,
   },
   categoryLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: FontFamily.bold,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
   timeLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#94A3B8',
   },
   titleText: {
-    fontSize: 14,
-    color: '#0F172A',
+    fontSize: 13.5,
+    color: Colors.text,
     fontWeight: '700',
     fontFamily: FontFamily.semibold,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   bodyText: {
-    fontSize: 12.5,
-    color: '#475569',
+    fontSize: 12,
+    color: Colors.textSecondary,
     lineHeight: 16,
     fontFamily: FontFamily.regular,
   },
-  actionRow: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(226, 232, 240, 0.5)',
-    height: 42,
-  },
-  actionBtn: {
-    flex: 1,
+  closeIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  actionBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
+  progressBarBg: {
+    height: 3,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    width: '100%',
   },
-  closeBtnText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  separator: {
-    width: 1,
-    backgroundColor: 'rgba(226, 232, 240, 0.5)',
+  progressBarFill: {
+    height: '100%',
   },
 });

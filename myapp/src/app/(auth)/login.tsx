@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Modal,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 const splashPoster = require('../../../assets/images/splash_poster.png');
@@ -27,6 +28,8 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 
 import * as Haptics from 'expo-haptics';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,34 +39,39 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
-      GoogleSignin.configure({
-        webClientId:
-          process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
-          '1086683526523-google-client-id-placeholder.apps.googleusercontent.com',
-        offlineAccess: true,
-      });
+      const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+      if (clientId && !clientId.includes('placeholder')) {
+        GoogleSignin.configure({
+          webClientId: clientId,
+          offlineAccess: true,
+        });
+      }
     }
   }, []);
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
-
     if (Platform.OS === 'web') {
-      const confirmMock = window.confirm(
-        'Google Native Sign-In is not supported on Web.\n\nWould you like to log in with a Mock Google Account for testing?'
-      );
-      if (confirmMock) {
-        await performGoogleBackendLogin('mock_google_token_resident');
-      } else {
-        setLoading(false);
-      }
+      Alert.alert('Not Supported', 'Google Sign-In is only available on Android and iOS devices.');
       return;
     }
 
+    const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    if (!clientId || clientId.includes('placeholder')) {
+      Alert.alert(
+        'Google Sign-In Setup Required',
+        'Google Sign-In requires a valid Web Client ID from Google Cloud Console.\n\nTo configure Google Sign-In:\n1. Open Google Cloud / Firebase Console\n2. Register your Android App ("com.portl.app") & add your SHA-1 fingerprint\n3. Copy the Web Client ID into EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in myapp/.env\n\nPlease sign in with Email & Password in the meantime.'
+      );
+      return;
+    }
+
+    setLoading(true);
     try {
       if (Platform.OS === 'android') {
-        await GoogleSignin.hasPlayServices();
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       }
+      // Force native account picker dialog by clearing any cached session first
+      await GoogleSignin.signOut().catch(() => {});
+
       const response = await GoogleSignin.signIn();
       const idToken = response.data?.idToken;
 
@@ -79,27 +87,44 @@ export default function LoginScreen() {
         error.code === statusCodes.SIGN_IN_CANCELLED ||
         error.code === statusCodes.IN_PROGRESS
       ) {
-        Alert.alert('Sign-In Cancelled', 'Google Sign-In was cancelled.');
+        // User cancelled — do nothing
         setLoading(false);
         return;
       }
 
-      // Offer Mock Google Login for testing/offline simulator contexts
+      if (
+        error?.code === 'DEVELOPER_ERROR' ||
+        error?.code === '10' ||
+        error?.message?.includes('DEVELOPER_ERROR')
+      ) {
+        setLoading(false);
+        Alert.alert(
+          'Select Google Account to Sign In',
+          'Native Google Sign-In requires adding your SHA-1 to Google Cloud Console.\n\nChoose an account email to test database role-based login:',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Resident (resident@portl.app)',
+              onPress: () => performGoogleBackendLogin('mock_google_token_resident'),
+            },
+            {
+              text: 'Guard (guard@portl.app)',
+              onPress: () => performGoogleBackendLogin('mock_google_token_guard'),
+            },
+            {
+              text: 'Admin (loverbirdcpr6457@gmail.com)',
+              onPress: () => performGoogleBackendLogin('mock_google_token_admin'),
+            },
+          ]
+        );
+        return;
+      }
+
       Alert.alert(
-        'Google Sign-In Setup',
-        'Google Client Credentials are not configured in your environment, or Play Services are missing.\n\nWould you like to log in with a Mock Google Account for testing?',
-        [
-          { text: 'Cancel', style: 'cancel', onPress: () => setLoading(false) },
-          { 
-            text: 'Use Mock Resident', 
-            onPress: () => performGoogleBackendLogin('mock_google_token_resident') 
-          },
-          { 
-            text: 'Use Mock Admin', 
-            onPress: () => performGoogleBackendLogin('mock_google_token_admin') 
-          }
-        ]
+        'Google Sign-In Failed',
+        'Could not complete Google Sign-In. Please check your network connection or log in with your email and password.'
       );
+      setLoading(false);
     }
   };
 
@@ -121,9 +146,25 @@ export default function LoginScreen() {
           router.replace('/(resident)');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Google Auth Failed', getApiError(error));
+      const errorMsg = getApiError(error);
+
+      // Check if this is a "no account found" error — guide to registration
+      if (error?.response?.status === 404) {
+        Alert.alert(
+          'Account Not Found',
+          'No account exists with this Google email.\n\nPlease register first with email & password, then you can use Google Sign-In to log in.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Register Now', onPress: () => router.push('/(auth)/register') },
+          ]
+        );
+      } else if (error?.response?.status === 403) {
+        Alert.alert('Account Pending', errorMsg);
+      } else {
+        Alert.alert('Google Auth Failed', errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -175,128 +216,142 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      <StatusBar style="dark" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <StatusBar style="light" />
+
+      {/* Top gradient hero with branding */}
+      <View style={styles.heroSection}>
+        <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
+        <Text style={styles.appName}>Portl</Text>
+        <Text style={styles.tagline}>Your society, one tap away</Text>
+        <TouchableOpacity
+          style={styles.showcaseBtn}
+          onPress={() => setShowShowcase(true)}
+        >
+          <Ionicons name="sparkles" size={13} color="#fff" style={{ marginRight: 5 }} />
+          <Text style={styles.showcaseBtnText}>See what's new</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Main card that covers the bottom portion of the screen */}
+      <KeyboardAvoidingView
+        style={styles.cardWrapper}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.appName}>Portl</Text>
-          <Text style={styles.tagline}>Your society, one tap away</Text>
+        <ScrollView
+          contentContainerStyle={styles.cardScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.formCard}>
+            {/* Drag handle indicator */}
+            <View style={styles.handleBar} />
 
-          <TouchableOpacity
-            style={styles.showcaseBtn}
-            onPress={() => setShowShowcase(true)}
-          >
-            <Ionicons name="sparkles" size={14} color={Colors.primary} style={{ marginRight: 6 }} />
-            <Text style={styles.showcaseBtnText}>See what's new in Portl</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.formTitle}>Welcome back</Text>
+            <Text style={styles.formSubtitle}>Sign in to continue</Text>
 
-        {/* Form */}
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>Welcome back</Text>
-          <Text style={styles.formSubtitle}>Sign in to your account</Text>
+            <Input
+              label="Email"
+              placeholder="Enter your email"
+              leftIcon="mail-outline"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-          <Input
-            label="Email"
-            placeholder="Enter your email"
-            leftIcon="mail-outline"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <Input
+              label="Password"
+              placeholder="Enter your password"
+              leftIcon="lock-closed-outline"
+              value={password}
+              onChangeText={setPassword}
+              isPassword
+            />
 
-          <Input
-            label="Password"
-            placeholder="Enter your password"
-            leftIcon="lock-closed-outline"
-            value={password}
-            onChangeText={setPassword}
-            isPassword
-          />
+            <TouchableOpacity
+              style={styles.forgotBtn}
+              onPress={() => router.push('/(auth)/forgot-password')}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.forgotBtn}
-            onPress={() => router.push('/(auth)/forgot-password')}
-          >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
+            <Button
+              title="Sign In"
+              onPress={handleLogin}
+              loading={loading}
+              fullWidth
+              size="lg"
+              icon={<Ionicons name="log-in-outline" size={20} color={Colors.white} />}
+            />
 
-          <Button
-            title="Sign In"
-            onPress={handleLogin}
-            loading={loading}
-            fullWidth
-            size="lg"
-            icon={<Ionicons name="log-in-outline" size={20} color={Colors.white} />}
-          />
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
+            {/* Google Button */}
+            <TouchableOpacity
+              style={styles.googleBtn}
+              onPress={handleGoogleLogin}
+              disabled={loading}
+            >
+              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+            </TouchableOpacity>
+
+            {/* Registration links */}
+            <View style={styles.linksRow}>
+              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                <Text style={styles.linkText}>
+                  No account? <Text style={styles.linkHighlight}>Sign Up</Text>
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.linkDot} />
+              <TouchableOpacity onPress={() => router.push('/(auth)/register-society')}>
+                <Text style={styles.linkText}>
+                  <Text style={styles.linkHighlight}>Register Society</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Demo Quick Access */}
+            <View style={styles.demoSection}>
+              <Text style={styles.demoTitle}>Quick Demo</Text>
+              <View style={styles.demoButtons}>
+                <TouchableOpacity
+                  style={[styles.demoButton, { backgroundColor: '#EEF2FF' }]}
+                  onPress={() => fillDemoCredentials('resident')}
+                >
+                  <Ionicons name="home-outline" size={15} color={Colors.primary} />
+                  <Text style={[styles.demoButtonText, { color: Colors.primary }]}>Resident</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.demoButton, { backgroundColor: '#ECFDF5' }]}
+                  onPress={() => fillDemoCredentials('guard')}
+                >
+                  <Ionicons name="shield-outline" size={15} color={Colors.successDark} />
+                  <Text style={[styles.demoButtonText, { color: Colors.successDark }]}>Guard</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.demoButton, { backgroundColor: '#FFF7ED' }]}
+                  onPress={() => fillDemoCredentials('admin')}
+                >
+                  <Ionicons name="settings-outline" size={15} color={Colors.warningDark} />
+                  <Text style={[styles.demoButtonText, { color: Colors.warningDark }]}>Admin</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-          <TouchableOpacity
-            style={styles.googleBtn}
-            onPress={handleGoogleLogin}
-            disabled={loading}
-          >
-            <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
-            <Text style={styles.googleBtnText}>Sign in with Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.registerLink}
-            onPress={() => router.push('/(auth)/register')}
-          >
-            <Text style={styles.registerText}>
-              Don't have an account?{' '}
-              <Text style={styles.registerHighlight}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Demo Credentials */}
-        <View style={styles.demoSection}>
-          <Text style={styles.demoTitle}>Quick Demo Login</Text>
-          <View style={styles.demoButtons}>
-            <TouchableOpacity
-              style={[styles.demoButton, { backgroundColor: Colors.primaryGhost }]}
-              onPress={() => fillDemoCredentials('resident')}
-            >
-              <Ionicons name="home-outline" size={18} color={Colors.primary} />
-              <Text style={[styles.demoButtonText, { color: Colors.primary }]}>Resident</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.demoButton, { backgroundColor: Colors.successLight }]}
-              onPress={() => fillDemoCredentials('guard')}
-            >
-              <Ionicons name="shield-outline" size={18} color={Colors.successDark} />
-              <Text style={[styles.demoButtonText, { color: Colors.successDark }]}>Guard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.demoButton, { backgroundColor: Colors.warningLight }]}
-              onPress={() => fillDemoCredentials('admin')}
-            >
-              <Ionicons name="settings-outline" size={18} color={Colors.warningDark} />
-              <Text style={[styles.demoButtonText, { color: Colors.warningDark }]}>Admin</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-
+      {/* Showcase Modal */}
       <Modal
         visible={showShowcase}
         animationType="slide"
@@ -391,134 +446,205 @@ export default function LoginScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primary,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing['2xl'],
-    paddingTop: Spacing['6xl'],
-    paddingBottom: Spacing['3xl'],
-  },
-  header: {
+
+  // ── Hero (top branding area) ──
+  heroSection: {
     alignItems: 'center',
-    marginBottom: Spacing['3xl'],
-  },
-  logoContainer: {
-    marginBottom: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 60 : 48,
+    paddingBottom: 28,
+    backgroundColor: Colors.primary,
   },
   logoImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    marginBottom: Spacing.lg,
-    ...Shadows.lg,
-  },
-  logoIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: BorderRadius.xl,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.lg,
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   appName: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -1,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   tagline: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 4,
   },
-  form: {
+  showcaseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: BorderRadius.full,
+    marginTop: 12,
+  },
+  showcaseBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // ── Bottom card area ──
+  cardWrapper: {
+    flex: 1,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     backgroundColor: Colors.white,
-    borderRadius: BorderRadius['3xl'],
-    padding: Spacing['2xl'],
-    ...Shadows.md,
+    overflow: 'hidden',
   },
+  cardScrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    paddingBottom: 24,
+  },
+  formCard: {
+    flex: 1,
+  },
+
+  // ── Handle bar ──
+  handleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.borderLight,
+    alignSelf: 'center',
+    marginBottom: 18,
+    marginTop: 6,
+  },
+
+  // ── Form header ──
   formTitle: {
-    ...Typography.h3,
+    fontSize: 22,
+    fontWeight: '700',
     color: Colors.text,
-    marginBottom: Spacing.xs,
+    marginBottom: 4,
   },
   formSubtitle: {
-    ...Typography.body,
+    fontSize: 14,
     color: Colors.textSecondary,
-    marginBottom: Spacing['2xl'],
+    marginBottom: 20,
   },
-  registerLink: {
-    marginTop: Spacing.xl,
-    alignItems: 'center',
-  },
+
+  // ── Forgot password ──
   forgotBtn: {
     alignSelf: 'flex-end',
-    marginBottom: Spacing.xl,
-    marginTop: -Spacing.xs,
+    marginBottom: 16,
+    marginTop: -4,
   },
   forgotText: {
-    ...Typography.bodySm,
+    fontSize: 13,
     color: Colors.primary,
     fontWeight: '600',
   },
-  registerText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
-  },
-  registerHighlight: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  demoSection: {
-    marginTop: Spacing['2xl'],
+
+  // ── Divider ──
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 14,
+    gap: Spacing.sm,
   },
-  demoTitle: {
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.borderLight,
+  },
+  dividerText: {
     ...Typography.captionMedium,
     color: Colors.textTertiary,
-    marginBottom: Spacing.md,
+    textTransform: 'lowercase',
+  },
+
+  // ── Google button ──
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: Colors.borderLight,
+    borderRadius: BorderRadius.lg,
+    height: 48,
+    width: '100%',
+    ...Shadows.xs,
+  },
+  googleBtnText: {
+    ...Typography.bodyMedium,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+
+  // ── Registration links row ──
+  linksRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 18,
+    gap: 10,
+  },
+  linkText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  linkHighlight: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  linkDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.borderLight,
+  },
+
+  // ── Demo section ──
+  demoSection: {
+    marginTop: 20,
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+  },
+  demoTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+    marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   demoButtons: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: 8,
   },
   demoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: BorderRadius.full,
-    gap: Spacing.xs,
+    gap: 5,
   },
   demoButtonText: {
-    ...Typography.captionMedium,
-  },
-  showcaseBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    marginTop: Spacing.md,
-    alignSelf: 'center',
-  },
-  showcaseBtnText: {
-    ...Typography.captionMedium,
-    color: Colors.primary,
+    fontSize: 12,
     fontWeight: '600',
   },
+
+  // ── Showcase Modal ──
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
@@ -607,38 +733,5 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
     lineHeight: 16,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing.md,
-    gap: Spacing.sm,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.borderLight,
-  },
-  dividerText: {
-    ...Typography.captionMedium,
-    color: Colors.textTertiary,
-    textTransform: 'lowercase',
-  },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    borderRadius: BorderRadius.lg,
-    height: 48,
-    width: '100%',
-    ...Shadows.sm,
-  },
-  googleBtnText: {
-    ...Typography.bodyMedium,
-    color: Colors.text,
-    fontWeight: '600',
   },
 });

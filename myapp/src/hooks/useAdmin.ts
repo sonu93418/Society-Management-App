@@ -12,7 +12,7 @@ export const useAdminDashboard = () => {
   return useQuery({
     queryKey: QUERY_KEYS.adminDashboard,
     queryFn: () => adminApi.getDashboard(),
-    refetchInterval: 15000, // refresh stats every 15s
+    staleTime: 1000 * 60 * 5, // Keep data cached for 5 mins; user can pull to refresh
   });
 };
 

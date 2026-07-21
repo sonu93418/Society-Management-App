@@ -93,7 +93,7 @@ export class PushNotificationService {
           body: message.body,
         },
         android: {
-          priority: message.channelId === 'emergency' ? 'high' : 'normal',
+          priority: ['emergency', 'visitor', 'complaint'].includes(message.channelId) ? 'high' : 'normal',
           notification: {
             channelId: message.channelId,
             sound: message.sound,
@@ -101,6 +101,9 @@ export class PushNotificationService {
           },
         },
         apns: {
+          headers: {
+            'apns-priority': ['emergency', 'visitor', 'complaint'].includes(message.channelId) ? '10' : '5',
+          },
           payload: {
             aps: {
               sound: `${message.sound}.wav`,
@@ -149,6 +152,7 @@ export class PushNotificationService {
         body: message.body,
         sound: 'default', // standard fallback
         channelId: message.channelId,
+        priority: ['emergency', 'visitor', 'complaint'].includes(message.channelId) ? 'high' : 'normal',
         data: message.data,
       }));
 

@@ -68,14 +68,17 @@ notificationSchema.post('save', async function (doc) {
       category = 'emergency';
     }
 
-    // 3. Enqueue and dispatch push notification using the queue service
+    // 3. Enqueue and dispatch push notification asynchronously in the background
     const { notificationQueueService } = require('../services/notificationQueue.service');
-    await notificationQueueService.enqueue({
+    notificationQueueService.enqueue({
       userId: doc.user.toString(),
       title: doc.title,
       body: doc.body,
       category,
       data: doc.data ? JSON.parse(JSON.stringify(doc.data)) : undefined,
+    }).catch((err: any) => {
+      const { logger } = require('../utils/logger');
+      if (logger) logger.error('❌ Background enqueue failed:', err);
     });
 
   } catch (error) {

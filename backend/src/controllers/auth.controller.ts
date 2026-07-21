@@ -119,6 +119,15 @@ export class AuthController {
       next(error);
     }
   }
+
+  async getSocieties(req: Request, res: Response, next: NextFunction) {
+    try {
+      const societies = await authService.getSocieties();
+      sendSuccess(res, 200, 'Societies fetched successfully', societies);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

@@ -1,4 +1,4 @@
-import { User, IUser } from '../models/User';
+import { User, Admin, Guard, Resident, findUserByEmail, findUserById, IUser } from '../models/User';
 import { Society } from '../models/Society';
 import { Flat } from '../models/Flat';
 import { DeviceToken } from '../models/DeviceToken';
@@ -17,6 +17,7 @@ interface RegisterInput {
   role: UserRole;
   societyId: string;
   flatId?: string;
+  registrationCode?: string;
 }
 
 interface LoginInput {
@@ -26,12 +27,33 @@ interface LoginInput {
 
 import mongoose from 'mongoose';
 
+export const getSocietyId = (societyField: any): string => {
+  if (!societyField) return '';
+  if (typeof societyField === 'object' && societyField._id) {
+    return societyField._id.toString();
+  }
+  return societyField.toString();
+};
+
 export class AuthService {
   async register(input: RegisterInput) {
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: input.email });
+    // Check if user already exists across collections
+    const existingUser = await findUserByEmail(input.email);
     if (existingUser) {
       throw new AppError('User with this email already exists', 409);
+    }
+
+    // Role-specific signup guards to prevent unauthorized escalation
+    if (input.role === UserRole.ADMIN) {
+      const adminSecret = process.env.ADMIN_REGISTRATION_SECRET || 'admin123';
+      if (!input.registrationCode || input.registrationCode !== adminSecret) {
+        throw new AppError('Invalid registration code for Admin role', 403);
+      }
+    } else if (input.role === UserRole.GUARD) {
+      const guardSecret = process.env.GUARD_REGISTRATION_SECRET || 'guard123';
+      if (!input.registrationCode || input.registrationCode !== guardSecret) {
+        throw new AppError('Invalid registration code for Guard role', 403);
+      }
     }
 
     // Verify society exists (with fallback for DEMO_SOCIETY_ID or invalid ObjectId)
@@ -57,8 +79,8 @@ export class AuthService {
     // Hash password
     const hashedPassword = await hashPassword(input.password);
 
-    // Create user
-    const user = await User.create({
+    // Create user in role-specific MongoDB collection (admins, guards, residents)
+    const userData = {
       email: input.email,
       password: hashedPassword,
       name: input.name,
@@ -66,7 +88,17 @@ export class AuthService {
       role: input.role,
       society: society._id,
       flat: input.flatId,
-    });
+      isActive: input.role !== UserRole.RESIDENT,
+    };
+
+    let user;
+    if (input.role === UserRole.ADMIN) {
+      user = await Admin.create(userData);
+    } else if (input.role === UserRole.GUARD) {
+      user = await Guard.create(userData);
+    } else {
+      user = await Resident.create(userData);
+    }
 
     // If resident, add to flat
     if (input.role === UserRole.RESIDENT && input.flatId) {
@@ -76,11 +108,20 @@ export class AuthService {
       });
     }
 
+    // Populate society and flat details for client return
+    const populatedUser = await User.findById(user._id)
+      .populate('society', 'name address city state pincode totalTowers totalFlats')
+      .populate({
+        path: 'flat',
+        select: 'flatNumber floor tower isOccupied',
+        populate: { path: 'tower', select: 'name' },
+      });
+
     // Generate tokens
     const tokens = generateTokenPair({
       userId: user._id.toString(),
       role: user.role,
-      societyId: user.society.toString(),
+      societyId: getSocietyId(user.society),
     });
 
     // Save refresh token
@@ -90,40 +131,58 @@ export class AuthService {
 
     return {
       user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        society: user.society,
-        flat: user.flat,
+        id: populatedUser!._id,
+        email: populatedUser!.email,
+        name: populatedUser!.name,
+        phone: populatedUser!.phone,
+        role: populatedUser!.role,
+        society: populatedUser!.society,
+        flat: populatedUser!.flat,
       },
       ...tokens,
     };
   }
 
   async login(input: LoginInput) {
-    // Find user with password
-    const user = await User.findOne({ email: input.email }).select('+password');
+    // Find user across admins, guards, residents collections with populated society and flat details
+    const user = await findUserByEmail(input.email);
     if (!user) {
       throw new AppError('Invalid email or password', 401);
     }
 
+    // Check account lockout
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const remainingMinutes = Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000));
+      throw new AppError(`Your account is temporarily locked due to consecutive failed login attempts. Try again in ${remainingMinutes} minute(s).`, 403);
+    }
+
     if (!user.isActive) {
-      throw new AppError('Your account has been deactivated. Contact admin.', 403);
+      throw new AppError('Your account is pending admin approval or has been deactivated.', 403);
     }
 
     // Compare password
     const isMatch = await comparePassword(input.password, user.password);
     if (!isMatch) {
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+      if (user.loginAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 mins lockout
+      }
+      await user.save();
       throw new AppError('Invalid email or password', 401);
+    }
+
+    // Reset failed login attempts on successful authentication
+    if (user.loginAttempts > 0 || user.lockUntil) {
+      user.loginAttempts = 0;
+      user.lockUntil = null;
+      await user.save();
     }
 
     // Generate tokens
     const tokens = generateTokenPair({
       userId: user._id.toString(),
       role: user.role,
-      societyId: user.society.toString(),
+      societyId: getSocietyId(user.society),
     });
 
     // Save refresh token
@@ -149,36 +208,42 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     const decoded = verifyRefreshToken(refreshToken);
 
-    const user = await User.findById(decoded.userId).select('+refreshToken');
-    if (!user || user.refreshToken !== refreshToken) {
+    const user = await findUserById(decoded.userId);
+    if (!user) {
       throw new AppError('Invalid refresh token', 401);
     }
 
+    // Refresh Token Reuse Detection
+    if (user.refreshToken && user.refreshToken !== refreshToken) {
+      // Token reuse detected - invalidate user's active session completely for security
+      user.refreshToken = undefined;
+      await user.save();
+      throw new AppError('Refresh token reuse detected. Access denied.', 401);
+    }
+
+    // Generate new token pair (Access & Rotate Refresh Token)
     const tokens = generateTokenPair({
       userId: user._id.toString(),
       role: user.role,
-      societyId: user.society.toString(),
+      societyId: getSocietyId(user.society),
     });
 
-    await User.findByIdAndUpdate(user._id, {
-      refreshToken: tokens.refreshToken,
-    });
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
 
     return tokens;
   }
 
   async logout(userId: string) {
-    await User.findByIdAndUpdate(userId, { refreshToken: null });
+    const user = await findUserById(userId);
+    if (user) {
+      user.refreshToken = undefined;
+      await user.save();
+    }
   }
 
   async getProfile(userId: string) {
-    const user = await User.findById(userId)
-      .populate('society', 'name address city')
-      .populate({
-        path: 'flat',
-        select: 'flatNumber floor tower isOccupied',
-        populate: { path: 'tower', select: 'name' },
-      });
+    const user = await findUserById(userId);
 
     if (!user) {
       throw new AppError('User not found', 404);
@@ -278,7 +343,7 @@ export class AuthService {
       { flat: flatId },
       { new: true }
     ).populate([
-      { path: 'society', select: 'name address city' },
+      { path: 'society', select: 'name address city state pincode totalTowers totalFlats' },
       { path: 'flat', select: 'flatNumber floor tower isOccupied', populate: { path: 'tower', select: 'name' } },
     ]);
 
@@ -347,13 +412,22 @@ export class AuthService {
     let name: string;
     let avatar: string | undefined;
 
-    // Support mock tokens for local testing in development/offline modes
+    // 1. Support mock tokens for offline/emulator/dev testing
     if (idToken.startsWith('mock_google_token_')) {
-      const mockRole = idToken.replace('mock_google_token_', '');
-      email = `${mockRole}@google-demo.com`;
-      name = `Google ${mockRole.charAt(0).toUpperCase() + mockRole.slice(1)} User`;
+      const targetRole = idToken.replace('mock_google_token_', '');
+      if (targetRole === 'admin') {
+        email = 'loverbirdcpr6457@gmail.com'; // Admin account email
+        name = 'Society Admin';
+      } else if (targetRole === 'guard') {
+        email = 'guard@portl.app';
+        name = 'Gate Guard';
+      } else {
+        email = 'resident@portl.app';
+        name = 'Resident User';
+      }
       avatar = 'https://lh3.googleusercontent.com/a/default-user=s96-c';
     } else {
+      // Verify Google ID token with Google OAuth2 API
       try {
         const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
         const ticket = await client.verifyIdToken({
@@ -369,72 +443,66 @@ export class AuthService {
         avatar = payload.picture;
       } catch (err: any) {
         console.error('Google token verification failed:', err);
-        throw new AppError('Google token verification failed', 401);
+        throw new AppError('Google token verification failed. Please try again.', 401);
       }
     }
 
-    // 1. Check if user already exists
-    let user = await User.findOne({ email });
+    // 2. Check if user already exists with populated details in Database across collections
+    let user = await findUserByEmail(email);
 
-    if (user) {
-      // If user exists, log them in
-      if (avatar && !user.avatar) {
-        user.avatar = avatar;
-        await user.save();
-      }
-    } else {
-      // 2. Auto-create user if they don't exist
-      // Find the first society in database to bind them
+    if (!user) {
+      // If user does not exist in database, find onboarded society and auto-create in residents collection
       const society = await Society.findOne();
       if (!society) {
-        throw new AppError('No society found in the database. Google Auth is disabled until a society is created.', 400);
+        throw new AppError('No society found in system. Google Auth requires an onboarded society.', 400);
       }
 
-      // Generate a random secure password for database validation constraint
       const randomPassword = require('crypto').randomBytes(16).toString('hex');
       const hashedPassword = await hashPassword(randomPassword);
 
-      user = await User.create({
+      const newUser = await Resident.create({
         email,
         password: hashedPassword,
         name,
-        phone: '9999999999', // placeholder phone number
+        phone: '9999999999',
         role: UserRole.RESIDENT,
         society: society._id,
         avatar,
         isActive: true,
       });
 
-      // Send a welcome notification
-      await Notification.create({
-        user: user._id,
-        society: society._id,
-        type: NotificationType.NOTICE_PUBLISHED,
-        title: 'Welcome to Portl!',
-        body: `Hello ${name}, your account was successfully created via Google Sign-In! You have been assigned to ${society.name}. Please configure your flat details in profile.`,
-      });
+      user = await findUserById(newUser._id.toString());
+    } else {
+      // Auto-activate user account on Google Sign-In
+      if (!user.isActive) {
+        user.isActive = true;
+      }
+      if (avatar && !user.avatar) {
+        user.avatar = avatar;
+      }
+      await user.save();
     }
 
     // 3. Generate tokens
     const { accessToken, refreshToken } = generateTokenPair({
-      userId: user._id.toString(),
-      role: user.role,
-      societyId: user.society.toString(),
+      userId: user!._id.toString(),
+      role: user!.role,
+      societyId: getSocietyId(user!.society),
     });
 
-    user.refreshToken = refreshToken;
-    await user.save();
+    user!.refreshToken = refreshToken;
+    await user!.save();
 
     return {
       user: {
-        id: user._id.toString(),
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        society: user.society.toString(),
-        flat: user.flat ? user.flat.toString() : undefined,
-        avatar: user.avatar,
+        id: user!._id.toString(),
+        email: user!.email,
+        name: user!.name,
+        phone: user!.phone,
+        role: user!.role,
+        society: user!.society,
+        flat: user!.flat,
+        avatar: user!.avatar,
       },
       accessToken,
       refreshToken,
@@ -456,6 +524,10 @@ export class AuthService {
 
     await user.save();
     return user;
+  }
+
+  async getSocieties() {
+    return Society.find().select('name address city state pincode').sort({ name: 1 });
   }
 }
 

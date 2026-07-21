@@ -27,10 +27,16 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Rate limiting
 app.use('/api/', apiLimiter);
 
+import path from 'path';
+
 // Health check
 app.get('/health', (_req, res) => {
   res.json({ success: true, message: 'Portl API is running 🚀', timestamp: new Date().toISOString() });
 });
+
+// Serve Developer Portal Web App
+const portalPath = path.join(process.cwd(), '../developer-portal');
+app.use('/developer-portal', express.static(portalPath));
 
 // API routes
 app.use('/api/v1', routes);

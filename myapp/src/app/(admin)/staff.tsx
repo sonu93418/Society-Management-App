@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
@@ -28,8 +28,8 @@ export default function StaffScreen() {
   const categories = [
     { key: 'electrician', label: 'Electrician' },
     { key: 'plumber', label: 'Plumber' },
-    { key: 'carpenter', label: 'Carpenter' },
-    { key: 'cleaner', label: 'Cleaner' },
+    { key: 'maintenance', label: 'Maintenance' },
+    { key: 'housekeeping', label: 'Housekeeping' },
     { key: 'security', label: 'Security' },
     { key: 'gardener', label: 'Gardener' },
     { key: 'other', label: 'Other' },
@@ -130,75 +130,80 @@ export default function StaffScreen() {
       )}
 
       {/* Creation Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Register Staff</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }}>
-              <Input
-                label="Full Name *"
-                placeholder="e.g. Ramesh Kumar"
-                value={name}
-                onChangeText={setName}
-                leftIcon="person-outline"
-              />
-
-              <Input
-                label="Phone Number *"
-                placeholder="e.g. 9876543210"
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
-                leftIcon="call-outline"
-              />
-
-              <Text style={styles.fieldLabel}>Category *</Text>
-              <View style={styles.categorySelector}>
-                {categories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.key}
-                    style={[styles.categoryOption, category === cat.key && styles.categoryOptionActive]}
-                    onPress={() => setCategory(cat.key)}
-                  >
-                    <Text style={[styles.categoryOptionText, category === cat.key && styles.categoryOptionTextActive]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Register Staff</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={Colors.text} />
+                </TouchableOpacity>
               </View>
 
-              <Input
-                label="Working Hours"
-                placeholder="e.g. 9 AM - 6 PM"
-                value={workingHours}
-                onChangeText={setWorkingHours}
-                leftIcon="time-outline"
-              />
+              <ScrollView contentContainerStyle={{ paddingBottom: Spacing.xl }} keyboardShouldPersistTaps="handled">
+                <Input
+                  label="Full Name *"
+                  placeholder="e.g. Ramesh Kumar"
+                  value={name}
+                  onChangeText={setName}
+                  leftIcon="person-outline"
+                />
 
-              <Input
-                label="Short Description"
-                placeholder="e.g. Available for B-block plumbing"
-                value={description}
-                onChangeText={setDescription}
-                leftIcon="document-text-outline"
-              />
+                <Input
+                  label="Phone Number *"
+                  placeholder="e.g. 9876543210"
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
+                  leftIcon="call-outline"
+                />
 
-              <Button
-                title="Register Staff"
-                onPress={handleCreate}
-                loading={createStaffMutation.isPending}
-                fullWidth
-                style={{ marginTop: Spacing.xl }}
-              />
-            </ScrollView>
+                <Text style={styles.fieldLabel}>Category *</Text>
+                <View style={styles.categorySelector}>
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={[styles.categoryOption, category === cat.key && styles.categoryOptionActive]}
+                      onPress={() => setCategory(cat.key)}
+                    >
+                      <Text style={[styles.categoryOptionText, category === cat.key && styles.categoryOptionTextActive]}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Input
+                  label="Working Hours"
+                  placeholder="e.g. 9 AM - 6 PM"
+                  value={workingHours}
+                  onChangeText={setWorkingHours}
+                  leftIcon="time-outline"
+                />
+
+                <Input
+                  label="Short Description"
+                  placeholder="e.g. Available for B-block plumbing"
+                  value={description}
+                  onChangeText={setDescription}
+                  leftIcon="document-text-outline"
+                />
+
+                <Button
+                  title="Register Staff"
+                  onPress={handleCreate}
+                  loading={createStaffMutation.isPending}
+                  fullWidth
+                  style={{ marginTop: Spacing.xl }}
+                />
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

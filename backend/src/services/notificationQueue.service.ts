@@ -58,8 +58,10 @@ export class NotificationQueueService {
 
       logger.info(`📱 QueueService: Enqueued notification "${title}" for user ${userId}`);
 
-      // 4. Try immediate dispatch
-      await this.dispatchItem(queueItem);
+      // 4. Try immediate dispatch in the background (fire-and-forget) so it does not block the API response
+      this.dispatchItem(queueItem).catch(err => {
+        logger.error(`❌ QueueService: Background dispatch failed for notification ${queueItem._id}:`, err);
+      });
 
       return queueItem;
     } catch (error) {

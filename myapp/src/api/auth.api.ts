@@ -14,6 +14,21 @@ export interface RegisterRequest {
   role: string;
   societyId: string;
   flatId?: string;
+  registrationCode?: string;
+}
+
+export interface OnboardingRequest {
+  societyName: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  totalTowers?: number;
+  totalFlats?: number;
+  adminName: string;
+  adminEmail: string;
+  adminPhone: string;
+  adminPassword: string;
 }
 
 interface AuthResponse {
@@ -80,6 +95,16 @@ export const authApi = {
 
   assignFlat: async (flatId: string) => {
     const res = await apiClient.put<ApiResponse<User>>('/auth/assign-flat', { flatId });
+    return res.data;
+  },
+
+  submitOnboardingRequest: async (data: OnboardingRequest) => {
+    const res = await apiClient.post<ApiResponse<{ id: string; societyName: string; adminEmail: string; status: string }>>('/auth/onboarding-request', data);
+    return res.data;
+  },
+
+  getSocieties: async () => {
+    const res = await apiClient.get<ApiResponse<Array<{ _id: string; name: string; address: string; city: string; state: string; pincode: string }>>>('/auth/societies');
     return res.data;
   },
 };

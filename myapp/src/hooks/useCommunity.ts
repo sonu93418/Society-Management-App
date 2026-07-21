@@ -201,18 +201,19 @@ export const useStaff = () => {
 };
 
 export const useGuardSearchResidents = (query: string) => {
-   return useQuery({
-     queryKey: ['residents', 'search', query] as const,
-     queryFn: () => guardApi.searchResidents(query),
-     enabled: query.trim().length >= 2,
-   });
- };
+  return useQuery({
+    queryKey: ['residents', 'search', query] as const,
+    queryFn: () => guardApi.searchResidents(query || ''),
+    enabled: true,
+  });
+};
 
 // --- Notifications ---
 export const useNotifications = (params?: { page?: number }) => {
   return useQuery({
     queryKey: ['notifications', params],
     queryFn: () => notificationApi.getAll(params),
+    staleTime: 30000,
   });
 };
 
