@@ -1,167 +1,240 @@
-# Portl — Society Management & Gate Security System
+# 🏢 Portl — Smart Society Management & Gate Security Ecosystem
 
-Portl is a modern, premium, and fully integrated society management and gate security ecosystem. The system features a strictly typed **Node.js Express + MongoDB** backend alongside a beautiful, claymorphism-styled **Expo (React Native) + TypeScript** mobile client.
+![Portl Ecosystem Banner](docs/images/splash_poster.png)
 
-## 📐 Ecosystem Architecture
+[![Backend API](https://img.shields.io/badge/Backend%20API-Live%20on%20Render-4F46E5?style=for-the-badge&logo=render)](https://society-management-app-w77v.onrender.com/api/v1/auth/societies)
+[![Expo](https://img.shields.io/badge/Expo-SDK%2055-000000?style=for-the-badge&logo=expo)](https://expo.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/cloud/atlas)
+[![License](https://img.shields.io/badge/License-MIT-green.style=for-the-badge)](#license)
+
+**Portl** is a state-of-the-art, multi-tenant residency management and gate security application. Designed with modern claymorphism UI design, dynamic micro-animations, real-time WebSockets, digital QR code visitor passes, and automated SMTP email notifications, Portl delivers a seamless experience for **Residents**, **Security Guards**, **Committee Admins**, and **Super Admins**.
+
+---
+
+## 🌟 Interactive Features & Visual Showcase
+
+![Portl 3D Workflow Poster](docs/images/splash_workflow.png)
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="33%" align="center">
+        <b>🛡️ Security Guard Module</b><br/><br/>
+        <img src="docs/images/splash_security.png" width="100%" alt="Security Guard Module"/>
+      </td>
+      <td width="33%" align="center">
+        <b>🏡 Resident & Community Hub</b><br/><br/>
+        <img src="docs/images/splash_community.png" width="100%" alt="Resident & Community Hub"/>
+      </td>
+      <td width="33%" align="center">
+        <b>💳 Dues & Financial Management</b><br/><br/>
+        <img src="docs/images/splash_payments.png" width="100%" alt="Dues & Financial Management"/>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 📐 System Architecture
 
 ```mermaid
 graph TD
-    subgraph Mobile Client [Expo React Native App]
-        ResidentView[Resident Dashboard & Passes]
-        GuardView[Guard Check-In & Search]
-        AdminView[Admin Infrastructure & CRUD]
-        SocketClient[Socket.IO Client Sync]
+    subgraph Mobile App [Expo React Native Mobile Client]
+        ResidentView[Resident Dashboard & Digital QR Passes]
+        GuardView[Gate Guard Approval & Visitor Log]
+        AdminView[Admin Management & Infrastructure CRUD]
+        AxiosClient[Axios API Client with Token Refresh Mutex]
     end
     
-    subgraph REST & Live Events [API Gateway]
-        Express[Express REST API]
-        SocketServer[Socket.IO Event Server]
+    subgraph Cloud Backend [Node.js + Express Production Server]
+        AuthMiddleware[Multi-Collection Auth Middleware]
+        VisitorModule[Visitor Request Engine]
+        EmailService[SMTP Nodemailer Service]
+        SocketServer[Socket.IO Realtime Gateway]
     end
     
-    subgraph Database [Atlas Cluster]
-        Mongo[(MongoDB)]
+    subgraph Database [MongoDB Atlas Cloud Cluster]
+        AdminsCol[(admins)]
+        GuardsCol[(guards)]
+        ResidentsCol[(residents)]
+        UsersCol[(users)]
+        SocietiesCol[(societies)]
     end
     
-    ResidentView -->|REST API| Express
-    GuardView -->|REST API| Express
-    AdminView -->|REST API| Express
+    ResidentView -->|HTTPS REST API| AuthMiddleware
+    GuardView -->|HTTPS REST API| AuthMiddleware
+    AdminView -->|HTTPS REST API| AuthMiddleware
     
-    SocketClient <-->|WebSockets| SocketServer
+    AxiosClient <-->|WSS WebSockets| SocketServer
     
-    Express --> Mongo
-    SocketServer --> Mongo
+    AuthMiddleware --> AdminsCol
+    AuthMiddleware --> GuardsCol
+    AuthMiddleware --> ResidentsCol
+    AuthMiddleware --> UsersCol
+    
+    VisitorModule --> EmailService
+    VisitorModule --> SocketServer
 ```
 
 ---
 
-## 📂 Repository Structure
+## 🛠️ Key Capabilities & Features
 
-* **`/backend`** - Node.js & Express API with MongoDB Mongoose models, WebSockets synchronization, and controllers for all core functionalities.
-* **`/myapp`** - Expo React Native (TypeScript) cross-platform mobile client featuring dedicated UI flows for Residents, Guard staff, and Society Administrators.
+### 🛡️ 1. Gate Security & Visitor Management
+- **Instant Gate Check-In**: Guards log incoming visitors (deliveries, cabs, guests, technicians) linked to flat numbers.
+- **1-Tap Gate Entry Approval**: Security Guards can approve visitor entries directly at the gate, auto-notifying residents via push & sockets.
+- **Digital QR Code Passes**: Pre-approved guests receive digital pass cards complete with dynamic QR codes.
+- **Realtime Visitor Counters**: Live analytics tracking *Today's Visitors*, *Inside Gate*, and *Pending Approvals*.
 
----
+### 🏡 2. Resident Community Portal
+- **Society Notices & Polls**: View society announcements, cast votes on community polls, and receive broadcast alerts.
+- **Helpdesk Ticket Engine**: Log maintenance complaints, track resolution statuses, and chat directly with committee members.
+- **Staff Directory**: Browse electricians, plumbers, gardeners, and security guards with 1-click calling.
 
-## 🛠 Features Implemented
+### 👑 3. Admin Infrastructure & Multi-Role Governance
+- **Tower & Flat Management**: Add towers, configure floor counts, create flats, and manage occupancy statuses.
+- **Developer Onboarding Portal**: Society onboarding requests are submitted via mobile app, reviewed on the Developer Portal, and activated with automatic SMTP approval emails.
 
-### 1. Multi-Role Dashboards (Resident, Guard, Admin)
-* **Resident Dashboard**: Quick access to pre-approvals, live visitor notifications, notices, polls, helpdesk tickets, and maintenance dues.
-* **Guard Dashboard**: Real-time counters (Today's Visitors, Pending, Inside, Approved), check-in logs, and a visitor registration form with resident search.
-* **Admin Dashboard**: Analytics counters (Occupancy Rate, Active Visitors, Open Complaints, Dues Outstanding), society financial aggregates, and activity feeds.
-
-### 2. Live Socket.IO Synchronization & Notifications
-* Secure socket channel authorized via JWT handshake.
-* Instant push alerts and automatic query invalidation (instant view updates without manual pull-to-refresh) for:
-  * Visitor entry/exit activity (Guard dashboard $\rightarrow$ Resident alert).
-  * Gate check-in authorization requests (Guard registration $\rightarrow$ Resident review).
-  * Pre-approval approvals and rejections (Resident response $\rightarrow$ Guard dashboard update).
-
-### 3. Digital QR Code Passes & Sharing
-* Automatic generation of unique random pass codes upon resident pre-approval.
-* Rendered live QR codes on a stylized digital card using dynamic pass image generation.
-* Integrated native sharing interface to text the pass instructions directly to guests.
-
-### 4. Helpdesk Complaints Log (Chat View)
-* Detailed ticket threads listing categories, descriptions, dates, and statuses.
-* Chat-like message feed where residents and committee members can exchange progress comments.
-* Dynamic administrative status action buttons (Start Progress, Resolve, Close).
-
-### 5. Infrastructure & Directory CRUD (Admin Panel)
-* **Towers CRUD**: List and create society towers (total floors and flats metrics).
-* **Flats CRUD**: Dynamic tower select listings, floor specifications, flat numbers, and flat types (1BHK, 2BHK, etc.) with vacancy/occupancy tracking.
-* **Residents List**: Active status tags, contact details, and dynamic regex search.
-* **Staff Register**: Directory for electrician, plumber, gardener, and security staff with category sorting and contact links.
+### ⚡ 4. Enterprise Security & Architecture
+- **Multi-Collection MongoDB Integration**: Independent collection storage (`admins`, `guards`, `residents`, `users`) with parallel query resolution.
+- **Singleton Token Refresh Mutex**: Axios interceptor locks simultaneous 401s, preventing invalidation cascades.
+- **Live Gmail SMTP Delivery**: Automated verification emails and password reset codes dispatched directly to inbox addresses.
 
 ---
 
-## 🚀 Running the Project
+## 🔑 Demo & Test Credentials
 
-### 1. Set Up the Backend
-1. Navigate to the backend directory:
+You can test any role directly inside the application using these pre-configured accounts:
+
+| Role | Email Address | Default Password | Target Society |
+| :--- | :--- | :--- | :--- |
+| **Society Admin** | `loverbirdcpr6457@gmail.com` | `Ramesh@123` | **Gold Society (Patna, Bihar)** |
+| **Developer Admin** | `sonukumarray1009@gmail.com` | `Sonu@1234` | **Portl System Developer** |
+| **Gate Guard** | `guard@portl.app` | `Guard@123` | Gold Society |
+| **Resident** | `resident@portl.app` | `Resident@123` | Gold Society |
+
+> 💡 **Guard Registration Secret Code:** `guard123`
+
+---
+
+## 🚀 Quick Setup & Installation Guide
+
+### Prerequisites
+- [Node.js 18+](https://nodejs.org/) installed
+- [Expo CLI](https://docs.expo.dev/get-started/installation/) installed (`npm i -g expo-cli`)
+- [Git](https://git-scm.com/)
+
+---
+
+### 1️⃣ Local Backend Setup (`/backend`)
+
+1. Clone the repository:
    ```bash
-   cd backend
+   git clone https://github.com/sonu93418/Society-Management-App.git
+   cd Society-Management-App/backend
    ```
-2. Install npm dependencies:
+
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. Set up the MongoDB connection string inside the `.env` file (e.g. `MONGODB_URI`).
-4. Seed the database with demo accounts:
+
+3. Create your `.env` file inside `/backend/.env`:
+   ```env
+   PORT=5000
+   NODE_ENV=development
+   MONGODB_URI=mongodb+srv://devshubu978_db_user:UngTsiMHQxDi20xd@society-management.0fdgycf.mongodb.net/portl?retryWrites=true&w=majority
+   JWT_SECRET=portl-super-secret-key-prod-2026-!@#$%^&*
+   JWT_REFRESH_SECRET=portl-refresh-secret-key-prod-2026-!@#$%^&*
+   JWT_EXPIRE=15m
+   JWT_REFRESH_EXPIRE=7d
+   CORS_ORIGIN=*
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=sonukumarray1009@gmail.com
+   SMTP_PASS=ggslehoqigimiils
+   SMTP_FROM="Portl Admin" <sonukumarray1009@gmail.com>
+   ```
+
+4. Seed default database models:
    ```bash
    npm run seed
    ```
-5. Launch the Node development server:
+
+5. Launch the backend server:
    ```bash
    npm run dev
    ```
 
-### 2. Set Up the Mobile Client
-1. Navigate to the client directory:
+---
+
+### 2️⃣ Mobile Client Setup (`/myapp`)
+
+1. Open a new terminal and navigate to the mobile app directory:
    ```bash
-   cd myapp
+   cd Society-Management-App/myapp
    ```
-2. Install client dependencies:
+
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. Run TypeScript compilation to verify code safety:
+
+3. Create your `.env` file inside `/myapp/.env`:
+   ```env
+   EXPO_PUBLIC_API_URL=https://society-management-app-w77v.onrender.com/api/v1
+   ```
+
+4. Typecheck TypeScript:
    ```bash
    npx tsc --noEmit
    ```
-4. Start the Expo builder:
+
+5. Launch Metro bundler:
    ```bash
    npm run start
    ```
 
 ---
 
-## 📦 Standalone App Build (EAS Build)
+## 📦 Building Standalone Android APK (EAS Build)
 
-Portl is pre-configured with [EAS (Expo Application Services)](https://docs.expo.dev/build/introduction/) using `eas.json` to compile standalone binaries (e.g. Android `.apk` or iOS `.ipa`).
+Portl is pre-configured with **Expo Application Services (EAS)** for generating standalone `.apk` preview builds:
 
-### 1. Build Prerequisites
-Install the EAS CLI utility globally:
-```bash
-npm install -g eas-cli
-```
+1. Install EAS CLI globally:
+   ```bash
+   npm install -g eas-cli
+   ```
 
-### 2. Connect to Expo Services
-Authenticate with your Expo account credentials:
-```bash
-eas login
-```
+2. Log in to your Expo account:
+   ```bash
+   eas login
+   ```
 
-### 3. Initialize the Expo Project
-Assign your local codebase to an Expo project ID:
-```bash
-cd myapp
-eas project:init
-```
-
-### 4. Run Standalone Builds
-Use the configurations defined in `eas.json`:
-
-* **Android (Preview APK build)**:
-  ```bash
-  eas build --platform android --profile preview
-  ```
-* **Android (Production AAB bundle)**:
-  ```bash
-  eas build --platform android --profile production
-  ```
-* **iOS Build**:
-  ```bash
-  eas build --platform ios
-  ```
-
-> [!NOTE]
-> Standalone builds running on physical hardware must target a publicly accessible API endpoint. Make sure to configure the production API base URL in `client.ts` prior to building.
+3. Build the standalone APK:
+   ```bash
+   cd myapp
+   eas build --profile preview --platform android
+   ```
 
 ---
 
-## 🔑 Demo Credentials
+## 🌐 Production Server Deployment (Render)
 
-Use these pre-configured accounts to explore different roles (all passwords are `Demo@1234`):
+The production backend is hosted live on **Render Web Services**:
 
-* **Resident**: `resident@portl.app`
-* **Gate Guard**: `guard@portl.app`
-* **Society Administrator**: `admin@portl.app`
+- **Production API Base Endpoint:** `https://society-management-app-w77v.onrender.com/api/v1`
+- **Render Build Command:** `npm install && npm run build`
+- **Render Start Command:** `npm start`
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+<div align="center">
+  <sub>Built with ❤️ by the Portl Engineering Team</sub>
+</div>
