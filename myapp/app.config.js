@@ -86,7 +86,7 @@ module.exports = {
     extra: {
       router: {},
       eas: {
-        projectId: "8711fdcc-1d94-40b2-9c61-ee508b4c4b8c"
+        projectId: "3a56f505-a9b1-43bb-b3d4-99c95fbfb2be"
       },
       googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "114494858273-c21iph66rhkeveqdqoo9qpud6q9eto1s.apps.googleusercontent.com",
       apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "https://society-management-app-w77v.onrender.com/api/v1",
