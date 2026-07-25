@@ -201,7 +201,7 @@ export default function LoginScreen() {
     const credentials = {
       resident: { email: 'resident@portl.app', password: 'Demo@1234' },
       guard: { email: 'guard@portl.app', password: 'Demo@1234' },
-      admin: { email: 'loverbirdcpr6457@gmail.com', password: 'Ramesh@123' },
+      admin: { email: 'admin@portl.app', password: 'Demo@1234' },
     };
     setEmail(credentials[role].email);
     setPassword(credentials[role].password);
