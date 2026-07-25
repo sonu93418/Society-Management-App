@@ -198,44 +198,36 @@ export class SuperAdminService {
     }
 
     const [admins, guards, residents] = await Promise.all([
-      Admin.find(filter).select('pushToken email name role'),
-      Guard.find(filter).select('pushToken email name role'),
-      Resident.find(filter).select('pushToken email name role'),
+      (!data.targetRole || data.targetRole === 'all' || data.targetRole === 'admin')
+        ? Admin.find(filter).select('pushToken email name role society')
+        : [],
+      (!data.targetRole || data.targetRole === 'all' || data.targetRole === 'guard')
+        ? Guard.find(filter).select('pushToken email name role society')
+        : [],
+      (!data.targetRole || data.targetRole === 'all' || data.targetRole === 'resident')
+        ? Resident.find(filter).select('pushToken email name role society')
+        : [],
     ]);
 
     const targetUsers = [...admins, ...guards, ...residents];
+    let dispatchedCount = 0;
     
-    // 1. Create Notification records in MongoDB, emit real-time socket events, and dispatch push notifications
+    // Create Notification records in MongoDB (post-save hook dispatches socket & push)
     await Promise.allSettled(
       targetUsers.map(async (u) => {
         try {
-          const notif = await Notification.create({
+          if (!u.society) return;
+
+          await Notification.create({
             user: u._id,
-            title: `📢 ${data.title}`,
-            message: data.message,
-            type: data.priority === 'HIGH' ? NotificationType.EMERGENCY : NotificationType.NOTICE_PUBLISHED,
             society: u.society,
-            isRead: false,
-          });
-
-          // Real-time Socket.IO emission to connected socket client
-          try {
-            emitToUser(u._id.toString(), 'notification', notif);
-            if (data.priority === 'HIGH') {
-              emitToUser(u._id.toString(), 'emergency_alert', notif);
-            }
-          } catch (err) {
-            // Socket optional
-          }
-
-          // Mobile device push notification
-          await pushNotificationService.sendToUser({
-            userId: u._id.toString(),
             title: `📢 ${data.title}`,
             body: data.message,
-            category: data.priority === 'HIGH' ? 'emergency' : 'notice',
-            data: { priority: data.priority || 'HIGH' },
+            type: data.priority === 'HIGH' ? NotificationType.EMERGENCY : NotificationType.NOTICE_PUBLISHED,
+            data: { priority: data.priority || 'NORMAL' },
+            isRead: false,
           });
+          dispatchedCount++;
         } catch (err) {
           console.error(`Broadcast item dispatch error for user ${u._id}:`, err);
         }
@@ -243,7 +235,7 @@ export class SuperAdminService {
     );
 
     return {
-      dispatchedCount: targetUsers.length,
+      dispatchedCount,
       pushTokensSent: targetUsers.length,
       targetRole: data.targetRole || 'all',
     };

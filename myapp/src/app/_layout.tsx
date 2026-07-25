@@ -111,8 +111,14 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <InAppNotificationProvider>
         <SuccessModalProvider>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade',
+              contentStyle: { backgroundColor: Colors.primary },
+            }}
+          >
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(resident)" />

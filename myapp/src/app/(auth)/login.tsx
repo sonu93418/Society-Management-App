@@ -216,135 +216,138 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
 
-      {/* Top gradient hero with branding */}
-      <View style={styles.heroSection}>
-        <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
-        <Text style={styles.appName}>Portl</Text>
-        <Text style={styles.tagline}>Your society, one tap away</Text>
-        <TouchableOpacity
-          style={styles.showcaseBtn}
-          onPress={() => setShowShowcase(true)}
-        >
-          <Ionicons name="sparkles" size={13} color="#fff" style={{ marginRight: 5 }} />
-          <Text style={styles.showcaseBtnText}>See what's new</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Main card that covers the bottom portion of the screen */}
       <KeyboardAvoidingView
-        style={styles.cardWrapper}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.cardScrollContent}
+          contentContainerStyle={styles.mainScrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           bounces={false}
+          automaticallyAdjustKeyboardInsets={true}
         >
-          <View style={styles.formCard}>
-            {/* Drag handle indicator */}
-            <View style={styles.handleBar} />
-
-            <Text style={styles.formTitle}>Welcome back</Text>
-            <Text style={styles.formSubtitle}>Sign in to continue</Text>
-
-            <Input
-              label="Email"
-              placeholder="Enter your email"
-              leftIcon="mail-outline"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Input
-              label="Password"
-              placeholder="Enter your password"
-              leftIcon="lock-closed-outline"
-              value={password}
-              onChangeText={setPassword}
-              isPassword
-            />
-
+          {/* Top gradient hero with branding */}
+          <View style={styles.heroSection}>
+            <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
+            <Text style={styles.appName}>Portl</Text>
+            <Text style={styles.tagline}>Your society, one tap away</Text>
             <TouchableOpacity
-              style={styles.forgotBtn}
-              onPress={() => router.push('/(auth)/forgot-password')}
+              style={styles.showcaseBtn}
+              onPress={() => setShowShowcase(true)}
             >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Ionicons name="sparkles" size={13} color="#fff" style={{ marginRight: 5 }} />
+              <Text style={styles.showcaseBtnText}>See what's new</Text>
             </TouchableOpacity>
+          </View>
 
-            <Button
-              title="Sign In"
-              onPress={handleLogin}
-              loading={loading}
-              fullWidth
-              size="lg"
-              icon={<Ionicons name="log-in-outline" size={20} color={Colors.white} />}
-            />
+          {/* Main card that covers the bottom portion of the screen */}
+          <View style={styles.cardWrapper}>
+            <View style={styles.formCard}>
+              {/* Drag handle indicator */}
+              <View style={styles.handleBar} />
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
+              <Text style={styles.formTitle}>Welcome back</Text>
+              <Text style={styles.formSubtitle}>Sign in to continue</Text>
 
-            {/* Google Button */}
-            <TouchableOpacity
-              style={styles.googleBtn}
-              onPress={handleGoogleLogin}
-              disabled={loading}
-            >
-              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
-              <Text style={styles.googleBtnText}>Sign in with Google</Text>
-            </TouchableOpacity>
+              <Input
+                label="Email"
+                placeholder="Enter your email"
+                leftIcon="mail-outline"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
 
-            {/* Registration links */}
-            <View style={styles.linksRow}>
-              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-                <Text style={styles.linkText}>
-                  No account? <Text style={styles.linkHighlight}>Sign Up</Text>
-                </Text>
+              <Input
+                label="Password"
+                placeholder="Enter your password"
+                leftIcon="lock-closed-outline"
+                value={password}
+                onChangeText={setPassword}
+                isPassword
+              />
+
+              <TouchableOpacity
+                style={styles.forgotBtn}
+                onPress={() => router.push('/(auth)/forgot-password')}
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
-              <View style={styles.linkDot} />
-              <TouchableOpacity onPress={() => router.push('/(auth)/register-society')}>
-                <Text style={styles.linkText}>
-                  <Text style={styles.linkHighlight}>Register Society</Text>
-                </Text>
-              </TouchableOpacity>
-            </View>
 
-            {/* Demo Quick Access */}
-            <View style={styles.demoSection}>
-              <Text style={styles.demoTitle}>Quick Demo</Text>
-              <View style={styles.demoButtons}>
-                <TouchableOpacity
-                  style={[styles.demoButton, { backgroundColor: '#EEF2FF' }]}
-                  onPress={() => fillDemoCredentials('resident')}
-                >
-                  <Ionicons name="home-outline" size={15} color={Colors.primary} />
-                  <Text style={[styles.demoButtonText, { color: Colors.primary }]}>Resident</Text>
+              <Button
+                title="Sign In"
+                onPress={handleLogin}
+                loading={loading}
+                fullWidth
+                size="lg"
+                icon={<Ionicons name="log-in-outline" size={20} color={Colors.white} />}
+              />
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Button */}
+              <TouchableOpacity
+                style={styles.googleBtn}
+                onPress={handleGoogleLogin}
+                disabled={loading}
+              >
+                <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+                <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              </TouchableOpacity>
+
+              {/* Registration links */}
+              <View style={styles.linksRow}>
+                <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                  <Text style={styles.linkText}>
+                    No account? <Text style={styles.linkHighlight}>Sign Up</Text>
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.demoButton, { backgroundColor: '#ECFDF5' }]}
-                  onPress={() => fillDemoCredentials('guard')}
-                >
-                  <Ionicons name="shield-outline" size={15} color={Colors.successDark} />
-                  <Text style={[styles.demoButtonText, { color: Colors.successDark }]}>Guard</Text>
+                <View style={styles.linkDot} />
+                <TouchableOpacity onPress={() => router.push('/(auth)/register-society')}>
+                  <Text style={styles.linkText}>
+                    <Text style={styles.linkHighlight}>Register Society</Text>
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.demoButton, { backgroundColor: '#FFF7ED' }]}
-                  onPress={() => fillDemoCredentials('admin')}
-                >
-                  <Ionicons name="settings-outline" size={15} color={Colors.warningDark} />
-                  <Text style={[styles.demoButtonText, { color: Colors.warningDark }]}>Admin</Text>
-                </TouchableOpacity>
+              </View>
+
+              {/* Demo Quick Access */}
+              <View style={styles.demoSection}>
+                <Text style={styles.demoTitle}>Quick Demo</Text>
+                <View style={styles.demoButtons}>
+                  <TouchableOpacity
+                    style={[styles.demoButton, { backgroundColor: '#EEF2FF' }]}
+                    onPress={() => fillDemoCredentials('resident')}
+                  >
+                    <Ionicons name="home-outline" size={15} color={Colors.primary} />
+                    <Text style={[styles.demoButtonText, { color: Colors.primary }]}>Resident</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.demoButton, { backgroundColor: '#ECFDF5' }]}
+                    onPress={() => fillDemoCredentials('guard')}
+                  >
+                    <Ionicons name="shield-outline" size={15} color={Colors.successDark} />
+                    <Text style={[styles.demoButtonText, { color: Colors.successDark }]}>Guard</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.demoButton, { backgroundColor: '#FFF7ED' }]}
+                    onPress={() => fillDemoCredentials('admin')}
+                  >
+                    <Ionicons name="settings-outline" size={15} color={Colors.warningDark} />
+                    <Text style={[styles.demoButtonText, { color: Colors.warningDark }]}>Admin</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
@@ -446,7 +449,7 @@ export default function LoginScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -456,40 +459,45 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
 
+  mainScrollContent: {
+    flexGrow: 1,
+    backgroundColor: Colors.primary,
+  },
+
   // ── Hero (top branding area) ──
   heroSection: {
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 60 : 48,
-    paddingBottom: 28,
+    paddingTop: Platform.OS === 'ios' ? 24 : 16,
+    paddingBottom: 24,
     backgroundColor: Colors.primary,
   },
   logoImage: {
-    width: 68,
-    height: 68,
+    width: 64,
+    height: 64,
     borderRadius: 20,
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.25)',
   },
   appName: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255,255,255,0.75)',
-    marginTop: 4,
+    marginTop: 2,
   },
   showcaseBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     borderRadius: BorderRadius.full,
-    marginTop: 12,
+    marginTop: 10,
   },
   showcaseBtnText: {
     fontSize: 12,
@@ -503,13 +511,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     backgroundColor: Colors.white,
-    overflow: 'hidden',
-  },
-  cardScrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 22,
     paddingTop: 10,
-    paddingBottom: 24,
+    paddingBottom: 32,
+    minHeight: 520,
   },
   formCard: {
     flex: 1,

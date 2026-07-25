@@ -93,11 +93,12 @@ export class PushNotificationService {
           body: message.body,
         },
         android: {
-          priority: ['emergency', 'visitor', 'complaint'].includes(message.channelId) ? 'high' : 'normal',
+          priority: ['emergency', 'visitor', 'complaint', 'notice'].includes(message.channelId) ? 'high' : 'normal',
           notification: {
             channelId: message.channelId,
             sound: message.sound,
             clickAction: 'default',
+            visibility: 'public', // Ensures notification shows on Android lock screen
           },
         },
         apns: {

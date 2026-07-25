@@ -9,6 +9,16 @@ import { useAuthStore } from '../store/auth.store';
 export type NotificationReceivedCallback = (notification: Notifications.Notification) => void;
 export type NotificationTappedCallback = (response: Notifications.NotificationResponse) => void;
 
+// Configure global notification presentation behavior for all app states (foreground, background, lock screen)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 class NotificationManagerClass {
   private receivedCallbacks = new Map<string, NotificationReceivedCallback>();
   private tappedCallbacks = new Map<string, NotificationTappedCallback>();
@@ -55,17 +65,7 @@ class NotificationManagerClass {
       return;
     }
 
-    // 1. Configure default behavior (heads-up notifications when app is active)
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-
-    // 2. Set up Android notification channels (with audio fallback check)
+    // 1. Set up Android notification channels
     if (Platform.OS === 'android') {
       await this.configureAndroidChannels();
     }
