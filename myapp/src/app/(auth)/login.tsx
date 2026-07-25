@@ -13,7 +13,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const splashPoster = require('../../../assets/images/splash_poster.png');
 const appLogo = require('../../../assets/images/logo.png');
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -376,9 +375,9 @@ export default function LoginScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
               <View style={styles.imageContainer}>
                 <Image
-                  source={splashPoster}
-                  style={styles.posterImage}
-                  resizeMode="cover"
+                  source={appLogo}
+                  style={{ width: 120, height: 120, alignSelf: 'center', marginVertical: 12 }}
+                  resizeMode="contain"
                 />
               </View>
 
