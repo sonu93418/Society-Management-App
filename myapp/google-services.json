@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "944311959587",
+    "project_id": "society-management-app-3c3c3",
+    "storage_bucket": "society-management-app-3c3c3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:944311959587:android:42d6e9adda7f3748893196",
+        "android_client_info": {
+          "package_name": "com.portl.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV8R6K2kMPEjU6Z_dqI00ae3sgJ9bG2hQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
