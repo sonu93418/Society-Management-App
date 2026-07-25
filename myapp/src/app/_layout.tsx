@@ -62,7 +62,7 @@ function AuthGate() {
     } else {
       // Authenticated → send to role dashboard if on auth screen or root entry screen
       if (inAuthGroup || isAtRoot) {
-        const role = user?.role;
+        const role = user?.role ? String(user.role).toLowerCase() : '';
         if (role === 'admin') {
           router.replace('/(admin)');
         } else if (role === 'guard') {
