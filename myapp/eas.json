@@ -10,11 +10,20 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-management-app-w77v.onrender.com/api/v1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114494858273-c21iph66rhkeveqdqoo9qpud6q9eto1s.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "apk"
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://society-management-app-w77v.onrender.com/api/v1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "114494858273-c21iph66rhkeveqdqoo9qpud6q9eto1s.apps.googleusercontent.com"
+      }
+    }
   },
   "submit": {
     "production": {}

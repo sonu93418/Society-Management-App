@@ -4,10 +4,12 @@ import { useAuthStore } from '../store/auth.store';
 
 // Read the API URL from process.env (Expo Public variable) or app.json extra config
 // Falls back to local LAN IP for development
+const RENDER_PROD_URL = 'https://society-management-app-w77v.onrender.com/api/v1';
+
 const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ??
-  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-  'http://10.69.91.148:5000/api/v1';
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ||
+  RENDER_PROD_URL;
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

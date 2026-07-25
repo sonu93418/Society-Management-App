@@ -88,6 +88,7 @@ module.exports = {
       eas: {
         projectId: "8711fdcc-1d94-40b2-9c61-ee508b4c4b8c"
       },
+      googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "114494858273-c21iph66rhkeveqdqoo9qpud6q9eto1s.apps.googleusercontent.com",
       apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "https://society-management-app-w77v.onrender.com/api/v1",
       socketUrl: process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace("/api/v1", "") : "https://society-management-app-w77v.onrender.com"
     }
