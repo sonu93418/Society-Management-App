@@ -84,15 +84,13 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
   },
 ];
 
-const logoImg = require('../../../assets/images/logo.png');
-
 const slides = [
   {
     id: '1',
     title: 'Welcome to Portl',
     subtitle: 'Smart Living Unified',
     description: 'Manage your home and stay connected with your community on India\'s most premium society management portal.',
-    image: logoImg,
+    image: require('../../../assets/images/splash_poster.png'),
     isWorkflowSlide: false,
   },
   {
@@ -100,7 +98,7 @@ const slides = [
     title: 'App Ecosystem Workflow',
     subtitle: 'Top to Bottom Formation',
     description: '1. Admin Registers Society → 2. Developer Approves → 3. Guard Scans Gate → 4. Resident Smart Living.',
-    image: logoImg,
+    image: require('../../../assets/images/splash_workflow.png'),
     isWorkflowSlide: true,
   },
   {
@@ -108,7 +106,7 @@ const slides = [
     title: 'Notices & Democratic Polls',
     subtitle: 'Speak Up — Announce Your Message!',
     description: 'Stay updated with official society broadcasts, emergency announcements, and cast your vote in live polls.',
-    image: logoImg,
+    image: require('../../../assets/images/splash_community.png'),
     isWorkflowSlide: false,
   },
   {
@@ -116,7 +114,7 @@ const slides = [
     title: 'Smart Gate Security',
     subtitle: 'Real-time Gate Clearance',
     description: 'Pre-approve guests, register delivery executives, and get instant notification alerts on guest arrival.',
-    image: logoImg,
+    image: require('../../../assets/images/splash_security.png'),
     isWorkflowSlide: false,
   },
   {
@@ -124,7 +122,7 @@ const slides = [
     title: 'Payments & Helpdesk',
     subtitle: 'Dues & Maintenance Tickets',
     description: 'Pay your maintenance bills securely, participate in polls, and raise plumbing or electrical service tickets.',
-    image: logoImg,
+    image: require('../../../assets/images/splash_payments.png'),
     isWorkflowSlide: false,
   },
 ];

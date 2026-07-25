@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 const appLogo = require('../../../assets/images/logo.png');
+const splashPoster = require('../../../assets/images/splash_poster.png');
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,12 +23,21 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../store/auth.store';
 import { authApi } from '../../api/auth.api';
+import Constants from 'expo-constants';
 import { getApiError } from '../../api/client';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 import * as Haptics from 'expo-haptics';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const getGoogleClientId = () => {
+  return (
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+    (Constants.expoConfig?.extra?.googleWebClientId as string | undefined) ||
+    '114494858273-c21iph66rhkeveqdqoo9qpud6q9eto1s.apps.googleusercontent.com'
+  );
+};
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -38,7 +48,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
-      const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+      const clientId = getGoogleClientId();
       if (clientId && !clientId.includes('placeholder')) {
         GoogleSignin.configure({
           webClientId: clientId,
@@ -54,7 +64,7 @@ export default function LoginScreen() {
       return;
     }
 
-    const clientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const clientId = getGoogleClientId();
     if (!clientId || clientId.includes('placeholder')) {
       Alert.alert(
         'Google Sign-In Setup Required',
@@ -208,7 +218,7 @@ export default function LoginScreen() {
     const credentials = {
       resident: { email: 'resident@portl.app', password: 'Demo@1234' },
       guard: { email: 'guard@portl.app', password: 'Demo@1234' },
-      admin: { email: 'admin@portl.app', password: 'Demo@1234' },
+      admin: { email: 'loverbirdcpr6457@gmail.com', password: 'Ramesh@123' },
     };
     setEmail(credentials[role].email);
     setPassword(credentials[role].password);
@@ -375,9 +385,9 @@ export default function LoginScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
               <View style={styles.imageContainer}>
                 <Image
-                  source={appLogo}
-                  style={{ width: 120, height: 120, alignSelf: 'center', marginVertical: 12 }}
-                  resizeMode="contain"
+                  source={splashPoster}
+                  style={styles.posterImage}
+                  resizeMode="cover"
                 />
               </View>
 
