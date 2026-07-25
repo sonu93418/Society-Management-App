@@ -13,15 +13,16 @@ export interface PushMessagePayload {
 }
 
 // Maps category to Android channel and sound resource
+// NOTE: Must match channel IDs registered in NotificationManager.ts (portl_*_v2 IDs)
 const CATEGORY_MAP = {
-  visitor: { channelId: 'visitor', sound: 'doorbell' },
-  complaint: { channelId: 'complaint', sound: 'complaint' },
-  notice: { channelId: 'notice', sound: 'general' },
-  booking: { channelId: 'bookings', sound: 'general' },
-  payment: { channelId: 'payments', sound: 'success' },
-  poll: { channelId: 'notice', sound: 'general' },
-  emergency: { channelId: 'emergency', sound: 'emergency' },
-  general: { channelId: 'general', sound: 'general' },
+  visitor: { channelId: 'portl_visitor_v2', sound: 'doorbell' },
+  complaint: { channelId: 'portl_complaint_v2', sound: 'complaint' },
+  notice: { channelId: 'portl_general_v2', sound: 'general' },
+  booking: { channelId: 'portl_general_v2', sound: 'general' },
+  payment: { channelId: 'portl_payments_v2', sound: 'success' },
+  poll: { channelId: 'portl_general_v2', sound: 'general' },
+  emergency: { channelId: 'portl_emergency_v2', sound: 'emergency' },
+  general: { channelId: 'portl_general_v2', sound: 'general' },
 };
 
 export class PushNotificationService {
@@ -93,17 +94,17 @@ export class PushNotificationService {
           body: message.body,
         },
         android: {
-          priority: ['emergency', 'visitor', 'complaint', 'notice'].includes(message.channelId) ? 'high' : 'normal',
+          priority: 'high',
           notification: {
-            channelId: message.channelId,
-            sound: message.sound,
+            channelId: message.channelId || 'general',
+            sound: 'default',
             clickAction: 'default',
             visibility: 'public', // Ensures notification shows on Android lock screen
           },
         },
         apns: {
           headers: {
-            'apns-priority': ['emergency', 'visitor', 'complaint'].includes(message.channelId) ? '10' : '5',
+            'apns-priority': '10',
           },
           payload: {
             aps: {
@@ -152,8 +153,9 @@ export class PushNotificationService {
         title: message.title,
         body: message.body,
         sound: 'default', // standard fallback
-        channelId: message.channelId,
-        priority: ['emergency', 'visitor', 'complaint'].includes(message.channelId) ? 'high' : 'normal',
+        channelId: message.channelId || 'general',
+        priority: 'high',
+        badge: 1,
         data: message.data,
       }));
 

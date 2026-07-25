@@ -20,8 +20,8 @@ export class NoticeService {
 
     // Notify all active residents in the society
     try {
-      const { User } = require('../models/User');
-      const residents = await User.find({ society: data.societyId, role: 'resident', isActive: true });
+      const { Resident } = require('../models/User');
+      const residents = await Resident.find({ society: data.societyId, isActive: true });
       for (const resident of residents) {
         await Notification.create({
           user: resident._id,
@@ -77,8 +77,8 @@ export class PollService {
 
     // Notify all active residents in the society
     try {
-      const { User } = require('../models/User');
-      const residents = await User.find({ society: data.societyId, role: 'resident', isActive: true });
+      const { Resident } = require('../models/User');
+      const residents = await Resident.find({ society: data.societyId, isActive: true });
       for (const resident of residents) {
         await Notification.create({
           user: resident._id,
@@ -187,8 +187,8 @@ export class AmenityService {
           data: { bookingId: booking._id.toString() },
         });
       } else if (booking.status === BookingStatus.PENDING) {
-        const { User } = require('../models/User');
-        const admins = await User.find({ society: data.societyId, role: 'admin', isActive: true });
+        const { Admin } = require('../models/User');
+        const admins = await Admin.find({ society: data.societyId, isActive: true });
         for (const admin of admins) {
           await Notification.create({
             user: admin._id,

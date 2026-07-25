@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { User } from '../models/User';
+import { User, Admin, Guard, Resident, findUserById } from '../models/User';
 import { Society } from '../models/Society';
 import { Tower } from '../models/Tower';
 import { Flat } from '../models/Flat';
@@ -28,8 +28,8 @@ export class AdminService {
       openComplaints,
       pendingPayments,
     ] = await Promise.all([
-      User.countDocuments({ society: societyId, role: UserRole.RESIDENT, isActive: true }),
-      User.countDocuments({ society: societyId, role: UserRole.GUARD, isActive: true }),
+      Resident.countDocuments({ society: societyId, isActive: true }),
+      Guard.countDocuments({ society: societyId, isActive: true }),
       Tower.countDocuments({ society: societyId, isActive: true }),
       Flat.countDocuments({ society: societyId, isActive: true }),
       VisitorRequest.countDocuments({ society: societyId, createdAt: { $gte: today } }),
@@ -131,8 +131,8 @@ export class AdminService {
 
   // Resident management
   async getResidents(societyId: string, page = 1, limit = 20) {
-    const total = await User.countDocuments({ society: societyId, role: UserRole.RESIDENT });
-    const residents = await User.find({ society: societyId, role: UserRole.RESIDENT })
+    const total = await Resident.countDocuments({ society: societyId });
+    const residents = await Resident.find({ society: societyId })
       .populate({
         path: 'flat',
         select: 'flatNumber floor tower',
@@ -199,9 +199,8 @@ export class AdminService {
       });
       const flatIds = matchingFlats.map((f) => f._id);
 
-      return User.find({
+      return Resident.find({
         society: societyId,
-        role: UserRole.RESIDENT,
         isActive: true,
         $or: [
           { name: searchRegex },
@@ -235,9 +234,8 @@ export class AdminService {
     });
     const flatIds = matchingFlats.map((f) => f._id);
 
-    return User.find({
+    return Resident.find({
       society: societyId,
-      role: UserRole.RESIDENT,
       isActive: true,
       $or: [
         { name: searchRegex },
@@ -275,29 +273,22 @@ export class AdminService {
       throw new AppError('Flat does not belong to this society', 403);
     }
 
-    // 4. Prevent assigning an already-occupied flat to a different resident
-    const flatAlreadyHasOtherResident = flat.residents.some(
-      (r) => r.toString() !== residentId
-    );
-    if (flatAlreadyHasOtherResident) {
-      throw new AppError('This flat is already occupied by another resident. Please choose a vacant flat.', 409);
-    }
-
-    // 5. If resident already has a different flat, remove them from it
-    if (resident.flat && resident.flat.toString() !== flatId) {
-      const oldFlatId = resident.flat.toString();
+    // 4. Remove resident from previous flat if assigned
+    const oldFlatId = resident.flat?.toString();
+    if (oldFlatId) {
       await Flat.findByIdAndUpdate(oldFlatId, {
-        $pull: { residents: residentId },
+        $pull: { residents: resident._id },
       });
-      // Clear isOccupied if no residents remain in the old flat
-      const oldFlatAfter = await Flat.findById(oldFlatId);
-      if (oldFlatAfter && oldFlatAfter.residents.length === 0) {
+
+      // Check if previous flat is now empty
+      const updatedOldFlat = await Flat.findById(oldFlatId);
+      if (updatedOldFlat && updatedOldFlat.residents.length === 0) {
         await Flat.findByIdAndUpdate(oldFlatId, { isOccupied: false });
       }
     }
 
     // 6. Assign new flat to resident
-    const updatedResident = await User.findByIdAndUpdate(
+    const updatedResident = await Resident.findByIdAndUpdate(
       residentId,
       { flat: flatId },
       { new: true }

@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     paddingHorizontal: 22,
     paddingTop: 10,
-    paddingBottom: 32,
+    paddingBottom: Platform.OS === 'ios' ? 140 : 160,
     minHeight: 520,
   },
   formCard: {

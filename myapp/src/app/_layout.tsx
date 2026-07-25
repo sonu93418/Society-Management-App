@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { Platform, View, Text, Image, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../store/auth.store';
@@ -9,6 +9,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import { Colors, Typography, Spacing } from '../theme';
 import { SuccessModalProvider } from '../components/ui/SuccessModal';
 import { InAppNotificationProvider } from '../components/ui/InAppNotification';
+import { NotificationManager } from '../services/NotificationManager';
 
 const appLogo = require('../../assets/images/logo.png');
 
@@ -85,6 +86,15 @@ export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // Set up Android notification channels at startup — BEFORE user login.
+    // This ensures channels are created with MAX importance so lock screen banners work.
+    // (Android caches channel importance permanently; fresh v2 IDs bypass that cache.)
+    if (Platform.OS === 'android') {
+      NotificationManager.setupChannelsEarly().catch((e) =>
+        console.warn('⚠️ setupChannelsEarly failed:', e)
+      );
+    }
+
     // Restore session from SecureStore exactly once on mount.
     // restoreSession always sets isLoading=false when done (even on error).
     restoreSession();

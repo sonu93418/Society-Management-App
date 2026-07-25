@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 export const createNoticeSchema = z.object({
   body: z.object({
-    title: z.string().min(3, 'Title is required').max(200),
-    content: z.string().min(10, 'Content must be at least 10 characters'),
+    title: z.string().min(1, 'Title is required').max(200),
+    content: z.string().min(1, 'Content is required'),
     attachments: z.array(z.string()).max(5).optional(),
     isPinned: z.boolean().optional(),
   }),
@@ -11,11 +11,11 @@ export const createNoticeSchema = z.object({
 
 export const createPollSchema = z.object({
   body: z.object({
-    title: z.string().min(3, 'Title is required').max(200),
+    title: z.string().min(1, 'Title is required').max(200),
     description: z.string().optional(),
     options: z.array(z.string().min(1)).min(2, 'At least 2 options required').max(10),
     isAnonymous: z.boolean().optional(),
-    endDate: z.string().datetime('Valid end date required'),
+    endDate: z.string().min(1, 'Valid end date required'),
   }),
 });
 
@@ -30,8 +30,8 @@ export const voteSchema = z.object({
 
 export const createAmenitySchema = z.object({
   body: z.object({
-    name: z.string().min(2, 'Amenity name is required'),
-    description: z.string().min(5, 'Description is required'),
+    name: z.string().min(1, 'Amenity name is required'),
+    description: z.string().min(1, 'Description is required'),
     capacity: z.number().min(1),
     pricePerSlot: z.number().min(0).optional(),
     availableFrom: z.string().optional(),

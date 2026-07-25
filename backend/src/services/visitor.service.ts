@@ -1,6 +1,6 @@
 import { VisitorRequest, IVisitorRequest } from '../models/VisitorRequest';
 import { Flat } from '../models/Flat';
-import { User } from '../models/User';
+import { User, findUserById } from '../models/User';
 import { Notification } from '../models/Notification';
 import { AppError } from '../utils/response';
 import { VisitorStatus, VisitorType, NotificationType, UserRole } from '../constants';
@@ -40,7 +40,7 @@ export class VisitorService {
     const flat = await Flat.findById(input.flatId);
     if (!flat) throw new AppError('Flat not found', 404);
 
-    const resident = await User.findById(input.residentId);
+    const resident = await findUserById(input.residentId);
     if (!resident) throw new AppError('Resident not found', 404);
 
     // Check for existing pre-approved visitor
@@ -111,14 +111,19 @@ export class VisitorService {
     return request;
   }
 
-  async approveVisitor(requestId: string, residentId: string) {
+  async approveVisitor(requestId: string, userId: string, userRole?: string) {
     const request = await VisitorRequest.findById(requestId);
     if (!request) throw new AppError('Visitor request not found', 404);
-    if (request.resident.toString() !== residentId) {
-      throw new AppError('You can only approve visitors for your flat', 403);
+
+    const isResidentOwner = request.resident.toString() === userId;
+    const isAdminOrGuard = userRole === UserRole.ADMIN || userRole === UserRole.GUARD;
+
+    if (!isResidentOwner && !isAdminOrGuard) {
+      throw new AppError('You are not authorized to approve entry for this visitor', 403);
     }
+
     if (request.status !== VisitorStatus.PENDING) {
-      throw new AppError(`Request already ${request.status}`, 400);
+      throw new AppError(`Visitor request is already ${request.status}`, 400);
     }
 
     request.status = VisitorStatus.APPROVED;
@@ -126,17 +131,36 @@ export class VisitorService {
     request.qrCode = crypto.randomUUID();
     await request.save();
 
+    // Dispatch approval notification to resident
+    try {
+      await Notification.create({
+        user: request.resident,
+        society: request.society,
+        type: NotificationType.VISITOR_APPROVED,
+        title: '✅ Visitor Approved',
+        body: `${request.visitorName}'s entry request has been approved.`,
+        data: { visitorRequestId: request._id },
+      });
+    } catch (err) {
+      console.error('Failed to dispatch visitor approval notification:', err);
+    }
+
     return request;
   }
 
-  async rejectVisitor(requestId: string, residentId: string, reason?: string) {
+  async rejectVisitor(requestId: string, userId: string, userRole?: string, reason?: string) {
     const request = await VisitorRequest.findById(requestId);
     if (!request) throw new AppError('Visitor request not found', 404);
-    if (request.resident.toString() !== residentId) {
-      throw new AppError('You can only reject visitors for your flat', 403);
+
+    const isResidentOwner = request.resident.toString() === userId;
+    const isAdminOrGuard = userRole === UserRole.ADMIN || userRole === UserRole.GUARD;
+
+    if (!isResidentOwner && !isAdminOrGuard) {
+      throw new AppError('You are not authorized to reject entry for this visitor', 403);
     }
+
     if (request.status !== VisitorStatus.PENDING) {
-      throw new AppError(`Request already ${request.status}`, 400);
+      throw new AppError(`Visitor request is already ${request.status}`, 400);
     }
 
     request.status = VisitorStatus.REJECTED;
@@ -150,8 +174,12 @@ export class VisitorService {
   async markEntry(requestId: string, guardId: string) {
     const request = await VisitorRequest.findById(requestId);
     if (!request) throw new AppError('Visitor request not found', 404);
-    if (request.status !== VisitorStatus.APPROVED) {
-      throw new AppError('Visitor must be approved before entry', 400);
+
+    // Auto-approve if pending when guard marks entry at gate
+    if (request.status === VisitorStatus.PENDING) {
+      request.approvedAt = new Date();
+    } else if (request.status !== VisitorStatus.APPROVED) {
+      throw new AppError(`Visitor request cannot be marked inside when status is ${request.status}`, 400);
     }
 
     request.status = VisitorStatus.INSIDE;
@@ -160,14 +188,18 @@ export class VisitorService {
     await request.save();
 
     // Notify resident
-    await Notification.create({
-      user: request.resident,
-      society: request.society,
-      type: NotificationType.VISITOR_ENTRY,
-      title: 'Visitor Entered',
-      body: `${request.visitorName} has entered the society.`,
-      data: { visitorRequestId: request._id },
-    });
+    try {
+      await Notification.create({
+        user: request.resident,
+        society: request.society,
+        type: NotificationType.VISITOR_ENTRY,
+        title: 'Visitor Entered Gate 🚪',
+        body: `${request.visitorName} has entered the society.`,
+        data: { visitorRequestId: request._id },
+      });
+    } catch (err) {
+      console.error('Failed to notify resident of visitor entry:', err);
+    }
 
     return request;
   }

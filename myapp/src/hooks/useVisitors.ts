@@ -51,8 +51,7 @@ export const useApproveVisitor = () => {
   return useMutation({
     mutationFn: (id: string) => visitorApi.approve(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitorsPending });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };
@@ -62,8 +61,7 @@ export const useRejectVisitor = () => {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string }) => visitorApi.reject(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitorsPending });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };
@@ -73,8 +71,7 @@ export const useDeleteVisitor = () => {
   return useMutation({
     mutationFn: (id: string) => visitorApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitorsPending });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };
@@ -94,7 +91,7 @@ export const useCreateVisitor = () => {
       notes?: string;
     }) => visitorApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };
@@ -113,7 +110,7 @@ export const usePreApproveVisitor = () => {
       expectedCount?: number;
     }) => visitorApi.preApprove(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };
@@ -123,7 +120,7 @@ export const useMarkVisitorEntry = () => {
   return useMutation({
     mutationFn: (id: string) => visitorApi.markEntry(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };
@@ -133,7 +130,7 @@ export const useMarkVisitorExit = () => {
   return useMutation({
     mutationFn: (id: string) => visitorApi.markExit(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.visitors });
+      queryClient.invalidateQueries({ queryKey: ['visitors'] });
     },
   });
 };

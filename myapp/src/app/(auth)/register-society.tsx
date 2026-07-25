@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { authApi } from '../../api/auth.api';
 import { getApiError } from '../../api/client';
 import * as Haptics from 'expo-haptics';
@@ -140,17 +141,19 @@ export default function RegisterSocietyScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar style="dark" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 20}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          automaticallyAdjustKeyboardInsets={true}
+        >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -295,6 +298,7 @@ export default function RegisterSocietyScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -306,8 +310,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: Spacing['2xl'],
-    paddingTop: Spacing['4xl'],
-    paddingBottom: Spacing['4xl'],
+    paddingTop: Spacing.xl,
+    paddingBottom: Platform.OS === 'ios' ? 160 : 180,
   },
   header: {
     marginBottom: Spacing.xl,

@@ -3,8 +3,8 @@ import { TicketCategory, TicketPriority, TicketStatus } from '../constants';
 
 export const createTicketSchema = z.object({
   body: z.object({
-    title: z.string().min(5, 'Title must be at least 5 characters').max(200),
-    description: z.string().min(10, 'Description must be at least 10 characters').max(2000),
+    title: z.string().min(1, 'Title is required').max(200),
+    description: z.string().min(1, 'Description is required').max(2000),
     category: z.nativeEnum(TicketCategory),
     priority: z.nativeEnum(TicketPriority).optional(),
     images: z.array(z.string()).max(5).optional(),

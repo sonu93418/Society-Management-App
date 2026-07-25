@@ -9,7 +9,9 @@ import { useAuthStore } from '../store/auth.store';
 export type NotificationReceivedCallback = (notification: Notifications.Notification) => void;
 export type NotificationTappedCallback = (response: Notifications.NotificationResponse) => void;
 
-// Configure global notification presentation behavior for all app states (foreground, background, lock screen)
+// ── Foreground notification presentation handler ──
+// NOTE: This only affects FOREGROUND display.
+// Lock screen / background display is controlled entirely by Android channels (importance) and iOS permission grants.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -19,63 +21,129 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// ── Android Channel Definitions (v2 — fresh IDs to bypass Android's importance cache) ──
+const ANDROID_CHANNELS = [
+  {
+    id: 'portl_visitor_v2',
+    name: 'Visitor & Gate Alerts',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 500, 250, 500],
+    lightColor: '#4F46E5',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    enableLights: true,
+    enableVibrate: true,
+    bypassDnd: true,
+  },
+  {
+    id: 'portl_emergency_v2',
+    name: 'Emergency SOS',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 1000, 500, 1000],
+    lightColor: '#EF4444',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    enableLights: true,
+    enableVibrate: true,
+    bypassDnd: true,
+  },
+  {
+    id: 'portl_complaint_v2',
+    name: 'Maintenance Tickets',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#F59E0B',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    enableLights: true,
+    enableVibrate: true,
+  },
+  {
+    id: 'portl_payments_v2',
+    name: 'Maintenance Payments',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250],
+    lightColor: '#10B981',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    enableLights: true,
+    enableVibrate: true,
+  },
+  {
+    id: 'portl_general_v2',
+    name: 'Society Announcements',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 500, 250, 500],
+    lightColor: '#4F46E5',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    enableLights: true,
+    enableVibrate: true,
+  },
+];
+
+// Map category → new channel IDs
+const CHANNEL_ID_MAP: Record<string, string> = {
+  visitor: 'portl_visitor_v2',
+  emergency: 'portl_emergency_v2',
+  complaint: 'portl_complaint_v2',
+  payments: 'portl_payments_v2',
+  payment: 'portl_payments_v2',
+  general: 'portl_general_v2',
+  notice: 'portl_general_v2',
+  poll: 'portl_general_v2',
+  booking: 'portl_general_v2',
+};
+
 class NotificationManagerClass {
   private receivedCallbacks = new Map<string, NotificationReceivedCallback>();
   private tappedCallbacks = new Map<string, NotificationTappedCallback>();
   private isInitialized = false;
+  private channelsConfigured = false;
   private notificationListener: any = null;
   private responseListener: any = null;
   private lastRegisteredToken: string | null = null;
 
-  /**
-   * Register a callback to fire when a notification is received in the foreground.
-   */
   onNotificationReceived(id: string, callback: NotificationReceivedCallback) {
     this.receivedCallbacks.set(id, callback);
   }
 
-  /**
-   * Unregister a notification received callback.
-   */
   offNotificationReceived(id: string) {
     this.receivedCallbacks.delete(id);
   }
 
-  /**
-   * Register a callback to fire when a user taps a notification.
-   */
   onNotificationTapped(id: string, callback: NotificationTappedCallback) {
     this.tappedCallbacks.set(id, callback);
   }
 
-  /**
-   * Unregister a notification tapped callback.
-   */
   offNotificationTapped(id: string) {
     this.tappedCallbacks.delete(id);
   }
 
   /**
-   * Main initialization method. Call this on app startup when user is authenticated.
+   * MUST be called at app startup BEFORE user login — ensures Android channels
+   * are registered with MAX importance so lock screen banners work immediately.
    */
+  async setupChannelsEarly() {
+    if (Platform.OS !== 'android') return;
+    if (this.channelsConfigured) return;
+
+    console.log('🔔 NotificationManager: Setting up Android channels (early, pre-login)...');
+    await this.configureAndroidChannels();
+    this.channelsConfigured = true;
+    console.log('✅ NotificationManager: Android channels ready.');
+  }
+
   async initNotifications(userId: string, userToken: string) {
+    // Ensure channels are set up if not already done
+    if (Platform.OS === 'android' && !this.channelsConfigured) {
+      await this.configureAndroidChannels();
+      this.channelsConfigured = true;
+    }
+
     if (this.isInitialized) {
-      // Re-trigger token registration check if user changed, but keep listeners active
       this.checkAndRegisterToken(userId);
       return;
     }
 
-    // 1. Set up Android notification channels
-    if (Platform.OS === 'android') {
-      await this.configureAndroidChannels();
-    }
-
-    // 3. Register global listeners
     this.notificationListener = Notifications.addNotificationReceivedListener((notification) => {
       this.receivedCallbacks.forEach((cb) => {
-        try {
-          cb(notification);
-        } catch (err) {
+        try { cb(notification); } catch (err) {
           console.error('Error executing received callback:', err);
         }
       });
@@ -83,33 +151,20 @@ class NotificationManagerClass {
 
     this.responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
       this.tappedCallbacks.forEach((cb) => {
-        try {
-          cb(response);
-        } catch (err) {
+        try { cb(response); } catch (err) {
           console.error('Error executing tapped callback:', err);
         }
       });
     });
 
     this.isInitialized = true;
-    console.log('🔔 NotificationManager: Initialized listeners and channels.');
-
-    // 4. Resolve and register device push token
+    console.log('🔔 NotificationManager: Listeners initialized.');
     await this.checkAndRegisterToken(userId);
   }
 
-  /**
-   * Teardown listeners when user logs out.
-   */
   shutdown() {
-    if (this.notificationListener) {
-      this.notificationListener.remove();
-      this.notificationListener = null;
-    }
-    if (this.responseListener) {
-      this.responseListener.remove();
-      this.responseListener = null;
-    }
+    if (this.notificationListener) { this.notificationListener.remove(); this.notificationListener = null; }
+    if (this.responseListener) { this.responseListener.remove(); this.responseListener = null; }
     this.receivedCallbacks.clear();
     this.tappedCallbacks.clear();
     this.isInitialized = false;
@@ -118,102 +173,47 @@ class NotificationManagerClass {
   }
 
   /**
-   * Safely set up an Android notification channel.
-   * If the custom audio asset is missing from native build, falls back to DEFAULT sound.
+   * Delete old channels and recreate with fresh v2 IDs + MAX importance.
+   * Android caches channel importance permanently per ID — fresh IDs bypass the cache.
    */
-  private async safeSetNotificationChannelAsync(
-    channelId: string,
-    options: Notifications.NotificationChannelInput
-  ) {
-    try {
-      await Notifications.setNotificationChannelAsync(channelId, options);
-      console.log(`✅ NotificationManager: Configured channel "${channelId}" with custom sound.`);
-    } catch (err) {
-      console.warn(
-        `⚠️ NotificationManager: Custom sound "${options.sound}" not found in native app for channel "${channelId}". Falling back to system default.`
-      );
+  private async configureAndroidChannels() {
+    // Delete legacy channels if they exist (so old importance caches are cleared)
+    const legacyIds = ['visitor', 'emergency', 'complaint', 'payments', 'general', 'default'];
+    for (const id of legacyIds) {
       try {
-        await Notifications.setNotificationChannelAsync(channelId, {
-          ...options,
-          sound: undefined, // Uses Android system default notification sound
+        await Notifications.deleteNotificationChannelAsync(id);
+      } catch (_) { /* channel may not exist — ignore */ }
+    }
+
+    // Create fresh v2 channels with MAX importance
+    for (const channel of ANDROID_CHANNELS) {
+      try {
+        await Notifications.setNotificationChannelAsync(channel.id, {
+          name: channel.name,
+          importance: channel.importance,
+          vibrationPattern: channel.vibrationPattern,
+          lightColor: channel.lightColor,
+          lockscreenVisibility: channel.lockscreenVisibility,
+          enableLights: channel.enableLights,
+          enableVibrate: channel.enableVibrate,
+          bypassDnd: (channel as any).bypassDnd,
         });
-        console.log(`✅ NotificationManager: Configured fallback channel "${channelId}" successfully.`);
-      } catch (fallbackErr) {
-        console.error(
-          `❌ NotificationManager: Failed to configure fallback channel for "${channelId}":`,
-          fallbackErr
-        );
+        console.log(`✅ Channel created: ${channel.id} (importance: ${channel.importance})`);
+      } catch (err) {
+        console.error(`❌ Failed to create channel ${channel.id}:`, err);
       }
     }
   }
 
-  /**
-   * Configure all required high-importance Android channels.
-   */
-  private async configureAndroidChannels() {
-    // Visitor Approvals & Gate Alerts Channel
-    await this.safeSetNotificationChannelAsync('visitor', {
-      name: 'Visitor Approvals',
-      importance: Notifications.AndroidImportance.MAX,
-      sound: 'doorbell.wav',
-      vibrationPattern: [0, 500, 250, 500],
-      lightColor: '#4F46E5',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-
-    // Emergency Alerts Channel
-    await this.safeSetNotificationChannelAsync('emergency', {
-      name: 'Emergency SOS',
-      importance: Notifications.AndroidImportance.MAX,
-      sound: 'emergency.wav',
-      vibrationPattern: [0, 1000, 500, 1000],
-      lightColor: '#EF4444',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-
-    // Maintenance Complaints & Tickets Channel
-    await this.safeSetNotificationChannelAsync('complaint', {
-      name: 'Maintenance Tickets',
-      importance: Notifications.AndroidImportance.HIGH,
-      sound: 'complaint.wav',
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#F59E0B',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-
-    // Society Maintenance Payments Channel
-    await this.safeSetNotificationChannelAsync('payments', {
-      name: 'Maintenance Payments',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      sound: 'success.wav',
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#10B981',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-
-    // Default Fallback Channel
-    await this.safeSetNotificationChannelAsync('general', {
-      name: 'General Alerts',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      sound: 'general.wav',
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#4F46E5',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
-  }
-
-  /**
-   * Request permissions, resolve Expo Push Token, and register it on backend.
-   */
   private async checkAndRegisterToken(userId: string) {
     if (!Device.isDevice) {
-      console.log('💻 NotificationManager: Simulated device detected. Skipping push registration.');
+      console.log('💻 NotificationManager: Simulated device — skipping push registration.');
       return;
     }
 
     const authToken = useAuthStore.getState().accessToken;
     if (!userId || !authToken) {
-      console.log('📱 NotificationManager: Auth session not active. Deferring device token registration until login.');
+      console.log('📱 NotificationManager: Auth session not active. Deferring token registration.');
       return;
     }
 
@@ -222,7 +222,14 @@ class NotificationManagerClass {
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+            allowCriticalAlerts: true,
+          },
+        });
         finalStatus = status;
       }
 
@@ -243,40 +250,28 @@ class NotificationManagerClass {
           Constants?.expoConfig?.extra?.eas?.projectId ??
           Constants?.easConfig?.projectId;
 
-        if (!projectId) {
-          throw new Error('EAS projectId not found in configuration config options.');
-        }
+        if (!projectId) throw new Error('EAS projectId not found.');
 
         pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
         tokenType = 'expo';
         console.log('📱 NotificationManager: Fetched iOS Expo push token:', pushToken);
       }
 
-      let cachedToken: string | null = null;
       const cacheKey = `registered_push_token_${userId}`;
+      let cachedToken: string | null = null;
       try {
-        if (Platform.OS !== 'web') {
-          cachedToken = await SecureStore.getItemAsync(cacheKey);
-        }
-      } catch (err) {
-        console.warn('⚠️ NotificationManager: Failed to read from SecureStore:', err);
-      }
+        if (Platform.OS !== 'web') cachedToken = await SecureStore.getItemAsync(cacheKey);
+      } catch (_) {}
 
       if (pushToken && (pushToken !== this.lastRegisteredToken || pushToken !== cachedToken)) {
         await authApi.registerDevice(pushToken, tokenType, Platform.OS);
         this.lastRegisteredToken = pushToken;
-        
         try {
-          if (Platform.OS !== 'web') {
-            await SecureStore.setItemAsync(cacheKey, pushToken);
-          }
-        } catch (err) {
-          console.warn('⚠️ NotificationManager: Failed to write to SecureStore:', err);
-        }
-        
+          if (Platform.OS !== 'web') await SecureStore.setItemAsync(cacheKey, pushToken);
+        } catch (_) {}
         console.log(`📱 NotificationManager: Registered ${tokenType} token on backend.`);
       } else {
-        console.log('📱 NotificationManager: Push token already registered for this session/user. Skipping registration.');
+        console.log('📱 NotificationManager: Push token already registered. Skipping.');
       }
     } catch (error: any) {
       if (error?.response?.status === 401) {
@@ -285,6 +280,59 @@ class NotificationManagerClass {
         console.warn('⚠️ NotificationManager: Push token registration skipped:', error?.message || error);
       }
     }
+  }
+
+  /**
+   * Schedule a local notification to appear on the lock screen and system tray.
+   * Uses v2 channel IDs which are created with MAX importance (bypasses Android cache).
+   */
+  async scheduleLockScreenNotification({
+    title,
+    body,
+    data = {},
+    category = 'visitor',
+    seconds = 5,
+  }: {
+    title: string;
+    body: string;
+    data?: Record<string, any>;
+    category?: string;
+    seconds?: number;
+  }) {
+    // Ensure channels are ready before scheduling
+    if (Platform.OS === 'android' && !this.channelsConfigured) {
+      await this.configureAndroidChannels();
+      this.channelsConfigured = true;
+    }
+
+    const channelId = CHANNEL_ID_MAP[category] || 'portl_general_v2';
+
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data: { ...data, category },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.MAX,
+          badge: 1,
+        },
+        trigger: seconds > 0
+          ? ({ seconds, repeats: false, type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL } as any)
+          : null,
+        ...(Platform.OS === 'android' ? { channelId } : {}),
+      } as any);
+      console.log(`🔔 Lock screen notification scheduled on channel "${channelId}" in ${seconds}s.`);
+    } catch (err) {
+      console.error('❌ NotificationManager: Error scheduling lock screen notification:', err);
+    }
+  }
+
+  /**
+   * Get resolved channel ID for a given category string.
+   */
+  getChannelId(category: string): string {
+    return CHANNEL_ID_MAP[category] || 'portl_general_v2';
   }
 }
 

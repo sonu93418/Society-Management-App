@@ -10,7 +10,9 @@ import {
   Modal,
   FlatList,
   Platform,
+  Alert,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -23,6 +25,7 @@ import {
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from '../../hooks/useCommunity';
+import { NotificationManager } from '../../services/NotificationManager';
 
 interface NotificationItem {
   _id: string;
@@ -62,6 +65,40 @@ export default function NotificationsScreen() {
     markAllReadMutation.mutate(undefined, {
       onSuccess: () => refetch(),
     });
+  };
+
+  const handleTestLockScreenAlert = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+        allowCriticalAlerts: true,
+      },
+    });
+
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permissions Needed',
+        'Please enable Notification permissions in system settings to receive lock screen alerts.'
+      );
+      return;
+    }
+
+    await NotificationManager.scheduleLockScreenNotification({
+      title: '🛡️ Gate Clearance Alert — Visitor Arrival',
+      body: 'Delivery Executive Rahul has arrived at Gate 1 with your package.',
+      category: 'visitor',
+      seconds: 5,
+    });
+
+    Alert.alert(
+      'Lock Screen Alert Scheduled in 5s! 📱',
+      'Please LOCK your phone screen or MINIMIZE the app right now to see the banner pop up live on your lock screen.',
+      [{ text: 'OK, Locking Screen' }]
+    );
   };
 
   const handleItemPress = (item: NotificationItem) => {
@@ -172,7 +209,7 @@ export default function NotificationsScreen() {
           onPress={() => setFilter('all')}
         >
           <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-            All Notifications ({notifications.length})
+            All ({notifications.length})
           </Text>
         </TouchableOpacity>
 
@@ -183,6 +220,11 @@ export default function NotificationsScreen() {
           <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>
             Unread ({unreadCount})
           </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.testLockScreenBtn} onPress={handleTestLockScreenAlert}>
+          <Ionicons name="phone-portrait-outline" size={13} color={Colors.primary} />
+          <Text style={styles.testLockScreenText}>Test Lock Screen</Text>
         </TouchableOpacity>
       </View>
 
@@ -366,6 +408,23 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: Colors.primary,
     fontWeight: '700',
+  },
+  testLockScreenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primaryGhost,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  testLockScreenText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   listContent: {
     padding: Spacing.lg,

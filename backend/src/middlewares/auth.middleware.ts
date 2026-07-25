@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/token';
 import { sendError } from '../utils/response';
-import { User } from '../models/User';
+import { findUserById } from '../models/User';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -27,8 +27,10 @@ export const authenticate = async (
     const token = authHeader.split(' ')[1];
     const decoded = verifyAccessToken(token);
 
-    // Check if user still exists and is active
-    const user = await User.findById(decoded.userId);
+    // Check user across ALL role collections (admins, guards, residents, users)
+    // NOTE: Users live in role-specific collections, NOT in the base 'users' collection.
+    // Using User.findById() here would always return null for real accounts.
+    const user = await findUserById(decoded.userId);
     if (!user || !user.isActive) {
       sendError(res, 401, 'User account is deactivated or does not exist.');
       return;

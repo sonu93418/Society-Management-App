@@ -126,13 +126,59 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (accessToken && refreshToken && userJson) {
         const user: User = JSON.parse(userJson);
-        set({
-          user,
-          accessToken,
-          refreshToken,
-          isAuthenticated: true,
-          isLoading: false,
-        });
+
+        // Validate the stored refresh token is still accepted by the backend.
+        // This handles DB reseeds, server restarts, and token invalidation gracefully.
+        try {
+          const BASE_URL =
+            process.env.EXPO_PUBLIC_API_URL ??
+            'http://10.69.91.148:5000/api/v1';
+
+          const response = await fetch(`${BASE_URL}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const newAccessToken: string = data?.data?.accessToken ?? accessToken;
+            const newRefreshToken: string = data?.data?.refreshToken ?? refreshToken;
+
+            // Persist rotated tokens
+            await Promise.all([
+              storage.setItemAsync(KEYS.ACCESS_TOKEN, newAccessToken),
+              storage.setItemAsync(KEYS.REFRESH_TOKEN, newRefreshToken),
+            ]).catch(() => {});
+
+            set({
+              user,
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+          } else {
+            // Token rejected by backend (stale after reseed/invalidation) — clear session
+            console.warn('[AuthStore] Stored refresh token rejected by backend. Clearing session.');
+            await Promise.all([
+              storage.deleteItemAsync(KEYS.ACCESS_TOKEN),
+              storage.deleteItemAsync(KEYS.REFRESH_TOKEN),
+              storage.deleteItemAsync(KEYS.USER),
+            ]).catch(() => {});
+            set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isLoading: false });
+          }
+        } catch (networkErr) {
+          // Network unavailable — trust local session (offline resilience)
+          console.warn('[AuthStore] Could not validate session with backend (offline?). Using local session.');
+          set({
+            user,
+            accessToken,
+            refreshToken,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        }
       } else {
         // No stored session — user must log in
         set({ isLoading: false });

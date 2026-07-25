@@ -4,13 +4,11 @@ import { UserRole } from '../constants';
 export const registerSchema = z.object({
   body: z.object({
     email: z.string().email('Invalid email address'),
-    password: z.string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
-    name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-    phone: z.string().min(10, 'Phone must be at least 10 digits'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    name: z.string().min(1, 'Name is required').max(100),
+    phone: z.string().min(1, 'Phone number is required'),
     role: z.nativeEnum(UserRole),
-    societyId: z.string().min(1, 'Society ID is required'),
+    societyId: z.string().optional(),
     flatId: z.string().optional(),
     registrationCode: z.string().optional(),
   }),
@@ -32,17 +30,15 @@ export const refreshTokenSchema = z.object({
 export const forgotPasswordSchema = z.object({
   body: z.object({
     email: z.string().email('Invalid email address'),
-    phone: z.string().min(10, 'Phone must be at least 10 digits'),
+    phone: z.string().min(1, 'Phone number is required'),
   }),
 });
 
 export const resetPasswordSchema = z.object({
   body: z.object({
     email: z.string().email('Invalid email address'),
-    resetToken: z.string().min(6, 'Reset token must be at least 6 digits'),
-    newPassword: z.string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
+    resetToken: z.string().min(1, 'Reset token is required'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
   }),
 });
 
@@ -74,19 +70,17 @@ export const googleLoginSchema = z.object({
 
 export const onboardingRequestSchema = z.object({
   body: z.object({
-    societyName: z.string().min(2, 'Society name must be at least 2 characters').max(100),
-    address: z.string().min(5, 'Address must be at least 5 characters'),
-    city: z.string().min(2, 'City name must be at least 2 characters'),
-    state: z.string().min(2, 'State name must be at least 2 characters'),
-    pincode: z.string().min(6, 'Pincode must be at least 6 characters').max(10),
+    societyName: z.string().min(1, 'Society name is required').max(100),
+    address: z.string().min(1, 'Address is required'),
+    city: z.string().min(1, 'City name is required'),
+    state: z.string().min(1, 'State name is required'),
+    pincode: z.string().min(1, 'Pincode is required').max(10),
     totalTowers: z.number().optional(),
     totalFlats: z.number().optional(),
-    adminName: z.string().min(2, 'Admin name must be at least 2 characters'),
+    adminName: z.string().min(1, 'Admin name is required'),
     adminEmail: z.string().email('Invalid admin email address'),
-    adminPhone: z.string().min(10, 'Admin phone must be at least 10 digits'),
-    adminPassword: z.string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character'),
+    adminPhone: z.string().min(1, 'Admin phone number is required'),
+    adminPassword: z.string().min(6, 'Password must be at least 6 characters'),
   }),
 });
 

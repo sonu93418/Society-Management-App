@@ -3,7 +3,7 @@ import { StaffCategory, PaymentStatus } from '../constants';
 
 export const residentUsersData = [
   { email: 'resident@portl.app', name: 'Priya Patel', phone: '9876543212', flatIndex: 0 },
-  { email: 'sonu.23jics107@jietjodhpur.ac.in', name: 'Sonu Resident', phone: '9876543298', flatIndex: 0 },
+  { email: 'sonukumarray1009@gmail.com', name: 'Sonu Resident', phone: '9876543298', flatIndex: 0 },
   { email: 'ankit@portl.app', name: 'Ankit Verma', phone: '9876543213', flatIndex: 1 },
   { email: 'neha@portl.app', name: 'Neha Gupta', phone: '9876543214', flatIndex: 2 },
   { email: 'vikram@portl.app', name: 'Vikram Singh', phone: '9876543215', flatIndex: 4 },

@@ -35,7 +35,8 @@ export class VisitorController {
     try {
       const result = await visitorService.approveVisitor(
         req.params.id,
-        req.user!.userId
+        req.user!.userId,
+        req.user!.role
       );
       sendSuccess(res, 200, 'Visitor approved', result);
     } catch (error) {
@@ -48,6 +49,7 @@ export class VisitorController {
       const result = await visitorService.rejectVisitor(
         req.params.id,
         req.user!.userId,
+        req.user!.role,
         req.body.reason
       );
       sendSuccess(res, 200, 'Visitor rejected', result);

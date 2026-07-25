@@ -1,5 +1,5 @@
 import { NotificationQueue, INotificationQueue } from '../models/NotificationQueue';
-import { User } from '../models/User';
+import { findUserById } from '../models/User';
 import { pushNotificationService } from './pushNotification.service';
 import { logger } from '../utils/logger';
 
@@ -26,10 +26,12 @@ export class NotificationQueueService {
     try {
       const { userId, title, body, category, data } = params;
 
-      // 1. Fetch user to check preferences
-      const user = await User.findById(userId);
+      // 1. Fetch user across all role collections (Admin, Guard, Resident, User)
+      // NOTE: Broadcast notifications store the _id from Admin/Guard/Resident collections,
+      // NOT from the base User collection — so User.findById() would always return null.
+      const user = await findUserById(userId);
       if (!user) {
-        logger.warn(`📱 QueueService: User ${userId} not found, skipping notification.`);
+        logger.warn(`📱 QueueService: User ${userId} not found in any collection, skipping notification.`);
         return null;
       }
 

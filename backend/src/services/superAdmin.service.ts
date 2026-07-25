@@ -1,6 +1,6 @@
 import { SocietyOnboardingRequest } from '../models/SocietyOnboardingRequest';
 import { Society } from '../models/Society';
-import { User, Admin, Guard, Resident, findUserById } from '../models/User';
+import { User, Admin, Guard, Resident, findUserById, findUserByEmail } from '../models/User';
 import { Flat } from '../models/Flat';
 import { Notification } from '../models/Notification';
 import { hashPassword } from '../utils/hash';
@@ -74,47 +74,51 @@ export class SuperAdminService {
       throw new AppError(`Request has already been processed with status: ${request.status}`, 400);
     }
 
-    // Double check email uniqueness in User collection
-    const userExists = await User.findOne({ email: request.adminEmail });
-    if (userExists) {
-      request.status = 'rejected';
-      request.rejectionReason = 'Admin email was already taken in system.';
-      request.processedAt = new Date();
-      await request.save();
-      throw new AppError('Admin email was already registered inside system. Auto-rejecting request.', 409);
+    // 1. Create or Find Society
+    let society = await Society.findOne({ name: new RegExp(`^${request.societyName.trim()}$`, 'i') });
+    if (!society) {
+      society = await Society.create({
+        name: request.societyName,
+        address: request.address,
+        city: request.city,
+        state: request.state,
+        pincode: request.pincode,
+        totalTowers: request.totalTowers || 0,
+        totalFlats: request.totalFlats || 0,
+        contactEmail: request.adminEmail,
+        contactPhone: request.adminPhone,
+        isActive: true,
+      });
+    } else {
+      await Society.updateOne({ _id: society._id }, { $set: { isActive: true } });
     }
 
-    // 1. Create Society
-    const society = await Society.create({
-      name: request.societyName,
-      address: request.address,
-      city: request.city,
-      state: request.state,
-      pincode: request.pincode,
-      totalTowers: request.totalTowers || 0,
-      totalFlats: request.totalFlats || 0,
-      contactEmail: request.adminEmail,
-      contactPhone: request.adminPhone,
-      isActive: true,
-    });
-
-    // 2. Create Admin User
-    const admin = await User.create({
-      email: request.adminEmail,
-      password: request.adminPasswordHash, // already hashed during request submission
-      name: request.adminName,
-      phone: request.adminPhone,
-      role: UserRole.ADMIN,
-      society: society._id,
-      isActive: true,
-    });
+    // 2. Create or Activate Admin User in Admin collection
+    let admin = await findUserByEmail(request.adminEmail);
+    if (!admin) {
+      admin = await Admin.create({
+        email: request.adminEmail,
+        password: request.adminPasswordHash, // already hashed during request submission
+        name: request.adminName,
+        phone: request.adminPhone,
+        role: UserRole.ADMIN,
+        society: society._id,
+        isActive: true,
+      });
+    } else {
+      const AdminModel = (admin.constructor as any);
+      await AdminModel.updateOne(
+        { _id: admin._id },
+        { $set: { society: society._id, isActive: true, role: UserRole.ADMIN } }
+      );
+    }
 
     // 3. Mark request as approved
     request.status = 'approved';
     request.processedAt = new Date();
     await request.save();
 
-    // 4. Send Verification/Welcome Email
+    // 4. Send Verification/Welcome Email via SMTP (and console fallback)
     try {
       await emailService.sendOnboardingApprovalEmail(
         request.adminEmail,
@@ -123,6 +127,20 @@ export class SuperAdminService {
       );
     } catch (err) {
       console.error('Failed to send verification email:', err);
+    }
+
+    // 5. Send In-App Approval Notification
+    try {
+      await Notification.create({
+        user: admin._id,
+        society: society._id,
+        type: NotificationType.NOTICE_PUBLISHED,
+        title: '🎉 Society Verified & Approved!',
+        body: `Congratulations ${request.adminName}! ${request.societyName} has been approved by the Developer Team. Your Admin account is now fully active.`,
+        data: { societyId: society._id.toString() },
+      });
+    } catch (err) {
+      console.error('Failed to send in-app approval notification:', err);
     }
 
     return {
@@ -134,7 +152,9 @@ export class SuperAdminService {
         id: admin._id.toString(),
         name: admin.name,
         email: admin.email,
+        isActive: true,
       },
+      message: `Onboarding request approved! Society ${society.name} and Admin ${admin.name} (${admin.email}) are now active. Confirmation email dispatched.`,
     };
   }
 
@@ -264,6 +284,18 @@ export class SuperAdminService {
     const user = await findUserById(userId);
     if (!user) {
       throw new AppError('User account not found', 404);
+    }
+
+    // Protect demo accounts from being deactivated
+    const DEMO_EMAILS = [
+      'admin@portl.app',
+      'guard@portl.app',
+      'resident@portl.app',
+      'loverbirdcpr6457@gmail.com',
+      'sonukumarray1009@gmail.com',
+    ];
+    if (DEMO_EMAILS.includes(user.email?.toLowerCase())) {
+      throw new AppError('Demo accounts cannot be deactivated. They are protected for testing purposes.', 403);
     }
 
     user.isActive = !user.isActive;

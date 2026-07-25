@@ -62,26 +62,45 @@ const seed = async () => {
 
     // 2. Create Society Infrastructure (Admin Domain)
     const society = await Society.create(societyData);
-    console.log('🏘️  Society created:', society.name);
 
-    const towers = await Tower.insertMany(
-      towerData.map((t) => ({ ...t, society: society._id }))
-    );
+    const goldSociety = await Society.create({
+      name: 'Gold Society',
+      address: 'Main Road, Fraser Road',
+      city: 'Patna',
+      state: 'Bihar',
+      pincode: '800001',
+      totalTowers: 2,
+      totalFlats: 36,
+      contactEmail: 'loverbirdcpr6457@gmail.com',
+      contactPhone: '94494946446',
+      isActive: true,
+    });
+    console.log('🏘️  Societies created:', society.name, ',', goldSociety.name);
+
+    // Towers for Portl Residency & Gold Society
+    const towers = await Tower.insertMany([
+      ...towerData.map((t) => ({ ...t, society: society._id })),
+      { name: 'Block A - Emerald', totalFloors: 6, totalFlats: 18, society: goldSociety._id },
+      { name: 'Block B - Sapphire', totalFloors: 6, totalFlats: 18, society: goldSociety._id },
+    ]);
     console.log('🏗️  Towers created:', towers.length);
 
-    // Create Flats
+    // Create Flats for all societies
     const flatData = [];
     for (const tower of towers) {
-      for (let floor = 1; floor <= 4; floor++) {
-        flatData.push({
-          flatNumber: `${floor}01`,
-          floor,
-          tower: tower._id,
-          society: society._id,
-          type: floor <= 2 ? '2BHK' : '3BHK',
-          area: floor <= 2 ? 1200 : 1600,
-          isOccupied: floor <= 3,
-        });
+      const flatCount = tower.society.toString() === goldSociety._id.toString() ? 3 : 4;
+      for (let floor = 1; floor <= (tower.totalFloors || 4); floor++) {
+        for (let num = 1; num <= flatCount; num++) {
+          flatData.push({
+            flatNumber: `${floor}0${num}`,
+            floor,
+            tower: tower._id,
+            society: tower.society,
+            type: floor <= 3 ? '2BHK' : '3BHK',
+            area: floor <= 3 ? 1200 : 1600,
+            isOccupied: floor <= 2,
+          });
+        }
       }
     }
     const flats = await Flat.insertMany(flatData);
@@ -97,11 +116,11 @@ const seed = async () => {
 
     const loverbirdAdmin = await Admin.create({
       email: 'loverbirdcpr6457@gmail.com',
-      name: 'Loverbird Admin',
-      phone: '9876543299',
+      name: 'Ramesh',
+      phone: '94494946446',
       role: UserRole.ADMIN,
       password: hashedPassword,
-      society: society._id,
+      society: goldSociety._id,
       isActive: true,
     });
     console.log('👑 Admin users created:', admin.email, loverbirdAdmin.email);

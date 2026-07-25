@@ -23,8 +23,8 @@ export const preApproveVisitorSchema = z.object({
     type: z.nativeEnum(VisitorType),
     vehicleNumber: z.string().optional(),
     flatId: z.string().min(1, 'Flat ID is required'),
-    validFrom: z.string().datetime().optional(),
-    validUntil: z.string().datetime().optional(),
+    validFrom: z.string().optional(),
+    validUntil: z.string().optional(),
     expectedCount: z.number().min(1).max(20).optional(),
   }),
 });

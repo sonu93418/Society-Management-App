@@ -92,8 +92,12 @@ export default function CommunityAdmin() {
 
   // --- Submit Handlers ---
   const handleCreateNotice = () => {
-    if (!noticeTitle.trim() || !noticeContent.trim()) {
-      Alert.alert('Error', 'Please fill in notice title and content');
+    if (!noticeTitle.trim()) {
+      Alert.alert('Validation Error', 'Please enter a title for the notice.');
+      return;
+    }
+    if (!noticeContent.trim()) {
+      Alert.alert('Validation Error', 'Please enter content for the notice.');
       return;
     }
 
@@ -105,7 +109,8 @@ export default function CommunityAdmin() {
       },
       {
         onSuccess: () => {
-          Alert.alert('Success', 'Notice published successfully!');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('Notice Published! 📢', 'The notice has been broadcast to all residents.');
           setNoticeModalVisible(false);
           setNoticeTitle('');
           setNoticeContent('');
@@ -113,7 +118,8 @@ export default function CommunityAdmin() {
           refetchNotices();
         },
         onError: (err: any) => {
-          Alert.alert('Error', getApiError(err));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Publish Failed', getApiError(err));
         },
       }
     );
@@ -139,43 +145,38 @@ export default function CommunityAdmin() {
 
   const handleCreatePoll = () => {
     if (!pollTitle.trim()) {
-      Alert.alert('Error', 'Please enter a poll question/title');
+      Alert.alert('Validation Error', 'Please enter a poll title/question.');
+      return;
+    }
+    const validOptions = pollOptions.map(o => o.trim()).filter(Boolean);
+    if (validOptions.length < 2) {
+      Alert.alert('Validation Error', 'Please provide at least 2 non-empty choices for the poll.');
       return;
     }
 
-    const filteredOptions = pollOptions.map(o => o.trim()).filter(Boolean);
-    if (filteredOptions.length < 2) {
-      Alert.alert('Error', 'Please enter at least 2 non-empty options');
-      return;
-    }
-
-    const daysNum = parseInt(pollDays, 10);
-    if (isNaN(daysNum) || daysNum <= 0) {
-      Alert.alert('Error', 'Duration must be a positive number');
-      return;
-    }
-
-    const endDate = new Date(Date.now() + daysNum * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + parseInt(pollDays || '7'));
 
     createPollMutation.mutate(
       {
         title: pollTitle.trim(),
         description: pollDescription.trim() || undefined,
-        options: filteredOptions,
-        endDate,
+        options: validOptions,
+        endDate: endDate.toISOString(),
       },
       {
         onSuccess: () => {
-          Alert.alert('Success', 'Opinion poll created successfully!');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('Poll Created! 🗳️', 'The poll is now live for society voting.');
           setPollModalVisible(false);
           setPollTitle('');
           setPollDescription('');
           setPollOptions(['', '']);
-          setPollDays('7');
           refetchPolls();
         },
         onError: (err: any) => {
-          Alert.alert('Error', getApiError(err));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Poll Creation Failed', getApiError(err));
         },
       }
     );

@@ -9,7 +9,7 @@ export interface IHelpdeskTicket extends Document {
   status: TicketStatus;
   images: string[];
   resident: mongoose.Types.ObjectId;
-  flat: mongoose.Types.ObjectId;
+  flat?: mongoose.Types.ObjectId;
   society: mongoose.Types.ObjectId;
   assignedTo?: mongoose.Types.ObjectId;
   resolvedAt?: Date;
@@ -39,7 +39,7 @@ const helpdeskTicketSchema = new Schema<IHelpdeskTicket>(
     },
     images: [{ type: String }],
     resident: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    flat: { type: Schema.Types.ObjectId, ref: 'Flat', required: true },
+    flat: { type: Schema.Types.ObjectId, ref: 'Flat' },
     society: { type: Schema.Types.ObjectId, ref: 'Society', required: true },
     assignedTo: { type: Schema.Types.ObjectId, ref: 'User' },
     resolvedAt: { type: Date },

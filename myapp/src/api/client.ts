@@ -17,7 +17,36 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor — attach JWT
+// ── Token Refresh Mutex ────────────────────────────────────────────────────────
+// Prevents multiple simultaneous 401s from each triggering their own refresh.
+// When a refresh is in flight, all subsequent 401 handlers wait for the SAME
+// promise instead of firing independent refresh requests (which triggers the
+// backend's reuse-detection and kills the session).
+let isRefreshing = false;
+let pendingRefreshResolvers: Array<(token: string) => void> = [];
+let pendingRefreshRejecters: Array<(err: any) => void> = [];
+
+function waitForRefresh(): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    pendingRefreshResolvers.push(resolve);
+    pendingRefreshRejecters.push(reject);
+  });
+}
+
+function broadcastRefreshSuccess(newToken: string) {
+  pendingRefreshResolvers.forEach(resolve => resolve(newToken));
+  pendingRefreshResolvers = [];
+  pendingRefreshRejecters = [];
+}
+
+function broadcastRefreshFailure(err: any) {
+  pendingRefreshRejecters.forEach(reject => reject(err));
+  pendingRefreshResolvers = [];
+  pendingRefreshRejecters = [];
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Request interceptor — attach current JWT to every outgoing request
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().accessToken;
@@ -29,43 +58,65 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle token refresh
+// Response interceptor — handle 401s with a singleton token refresh
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // If 401 and we haven't retried yet, try refreshing the token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    // Only intercept 401 Unauthorized errors that haven't been retried yet
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
 
+    originalRequest._retry = true;
+
+    if (isRefreshing) {
+      // A refresh is already in flight — wait for it and retry with the new token
       try {
-        const refreshToken = useAuthStore.getState().refreshToken;
-        if (!refreshToken) {
-          await useAuthStore.getState().logout();
-          return Promise.reject(error);
-        }
-
-        const response = await axios.post(`${BASE_URL}/auth/refresh-token`, {
-          refreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        useAuthStore.getState().setTokens(accessToken, newRefreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        const newToken = await waitForRefresh();
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return apiClient(originalRequest);
       } catch {
-        await useAuthStore.getState().logout();
         return Promise.reject(error);
       }
     }
 
-    return Promise.reject(error);
+    // This request is the first 401 — take ownership of the refresh
+    isRefreshing = true;
+
+    try {
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      // Call refresh endpoint directly (bypass apiClient to avoid interceptor loop)
+      const response = await axios.post(`${BASE_URL}/auth/refresh-token`, { refreshToken });
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data.data;
+
+      // Update store and SecureStore with the new tokens
+      useAuthStore.getState().setTokens(newAccessToken, newRefreshToken);
+
+      // Unblock all waiting requests with the new access token
+      broadcastRefreshSuccess(newAccessToken);
+      isRefreshing = false;
+
+      // Retry the original request with the fresh token
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      isRefreshing = false;
+      broadcastRefreshFailure(refreshError);
+
+      // Refresh failed — clear session and send to login
+      await useAuthStore.getState().logout();
+      return Promise.reject(refreshError);
+    }
   }
 );
 
-// Helper to extract error message
+// Helper to extract error message from API errors
 export const getApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     return error.response?.data?.message || error.message || 'Something went wrong';

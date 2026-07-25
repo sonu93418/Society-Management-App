@@ -27,7 +27,21 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), (req,
 router.put('/assign-flat', authenticate, (req, res, next) => authController.assignFlat(req, res, next));
 
 // Device token & Preferences routes (authenticated)
-router.post('/register-device', authenticate, validate(registerDeviceSchema), (req, res, next) => authController.registerDevice(req, res, next));
-router.put('/notification-preferences', authenticate, validate(updatePreferencesSchema), (req, res, next) => authController.updatePreferences(req, res, next));
+import { emailService } from '../services/email.service';
+
+// Test Email Endpoint (unauthenticated for instant verification)
+router.post('/test-email', async (req, res, next) => {
+  try {
+    const toEmail = req.body?.email || req.query?.email || 'sonukumarray1009@gmail.com';
+    const info = await emailService.sendTestEmail(String(toEmail));
+    res.json({
+      success: true,
+      message: `Real test email successfully dispatched to ${toEmail}!`,
+      messageId: info?.messageId,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

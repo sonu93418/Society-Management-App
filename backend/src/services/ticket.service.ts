@@ -1,7 +1,7 @@
 import { HelpdeskTicket } from '../models/HelpdeskTicket';
 import { TicketReply } from '../models/HelpdeskTicket';
 import { Notification } from '../models/Notification';
-import { User } from '../models/User';
+import { User, Admin, findUserById } from '../models/User';
 import { AppError } from '../utils/response';
 import { TicketStatus, TicketCategory, TicketPriority, NotificationType } from '../constants';
 
@@ -21,14 +21,10 @@ export class TicketService {
     let resolvedFlatId = input.flatId;
 
     if (!resolvedFlatId) {
-      const user = await User.findById(input.residentId);
+      const user = await findUserById(input.residentId);
       if (user && user.flat) {
         resolvedFlatId = user.flat.toString();
       }
-    }
-
-    if (!resolvedFlatId) {
-      throw new AppError('No flat is assigned to this resident account.', 400);
     }
 
     const ticket = await HelpdeskTicket.create({
@@ -38,13 +34,13 @@ export class TicketService {
       priority: input.priority || TicketPriority.MEDIUM,
       images: input.images || [],
       resident: input.residentId,
-      flat: resolvedFlatId,
+      flat: resolvedFlatId || undefined,
       society: input.societyId,
     });
 
     // Notify admins about new complaint
     try {
-      const admins = await User.find({ society: input.societyId, role: 'admin', isActive: true });
+      const admins = await Admin.find({ society: input.societyId, isActive: true });
       for (const admin of admins) {
         await Notification.create({
           user: admin._id,
@@ -144,11 +140,11 @@ export class TicketService {
 
     // Notify the other party about the reply
     try {
-      const user = await User.findById(userId);
+      const user = await findUserById(userId);
       const isResident = user?.role === 'resident';
 
       if (isResident) {
-        const admins = await User.find({ society: ticket.society, role: 'admin', isActive: true });
+        const admins = await Admin.find({ society: ticket.society, isActive: true });
         for (const admin of admins) {
           await Notification.create({
             user: admin._id,
