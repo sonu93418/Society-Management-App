@@ -492,10 +492,11 @@ export class AuthService {
     } else {
       // Verify Google ID token with Google OAuth2 API
       try {
-        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        const googleClientId = process.env.GOOGLE_CLIENT_ID || '114494858273-c21iph66rhkeveqdqoo9qpud6q9eto1s.apps.googleusercontent.com';
+        const client = new OAuth2Client(googleClientId);
         const ticket = await client.verifyIdToken({
           idToken,
-          audience: process.env.GOOGLE_CLIENT_ID,
+          audience: googleClientId,
         });
         const payload = ticket.getPayload();
         if (!payload || !payload.email || !payload.name) {
