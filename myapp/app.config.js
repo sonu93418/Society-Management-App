@@ -88,8 +88,8 @@ module.exports = {
       eas: {
         projectId: "8711fdcc-1d94-40b2-9c61-ee508b4c4b8c"
       },
-      apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://10.69.91.148:5000/api/v1",
-      socketUrl: process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace("/api/v1", "") : "http://10.69.91.148:5000"
+      apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "https://society-management-app-w77v.onrender.com/api/v1",
+      socketUrl: process.env.EXPO_PUBLIC_API_URL ? process.env.EXPO_PUBLIC_API_URL.replace("/api/v1", "") : "https://society-management-app-w77v.onrender.com"
     }
   }
 };
