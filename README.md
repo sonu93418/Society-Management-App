@@ -145,17 +145,17 @@ You can test any role directly inside the application using these pre-configured
    ```env
    PORT=5000
    NODE_ENV=development
-   MONGODB_URI=mongodb+srv://devshubu978_db_user:UngTsiMHQxDi20xd@society-management.0fdgycf.mongodb.net/portl?retryWrites=true&w=majority
-   JWT_SECRET=portl-super-secret-key-prod-2026-!@#$%^&*
-   JWT_REFRESH_SECRET=portl-refresh-secret-key-prod-2026-!@#$%^&*
+   MONGODB_URI=your_mongodb_atlas_connection_string
+   JWT_SECRET=your_jwt_super_secret_key
+   JWT_REFRESH_SECRET=your_jwt_refresh_secret_key
    JWT_EXPIRE=15m
    JWT_REFRESH_EXPIRE=7d
    CORS_ORIGIN=*
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
-   SMTP_USER=sonukumarray1009@gmail.com
-   SMTP_PASS=ggslehoqigimiils
-   SMTP_FROM="Portl Admin" <sonukumarray1009@gmail.com>
+   SMTP_USER=your_email@gmail.com
+   SMTP_PASS=your_gmail_app_password
+   SMTP_FROM="Portl Admin" <your_email@gmail.com>
    ```
 
 4. Seed default database models:
