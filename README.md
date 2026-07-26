@@ -1,12 +1,16 @@
 # 🏢 Portl — Smart Society Management & Gate Security Ecosystem
 
-![Portl Ecosystem Banner](docs/images/splash_poster.png)
+<p align="center">
+  <img src="docs/images/splash_poster.png" width="100%" style="border-radius: 12px; max-height: 520px; object-fit: cover;" alt="Portl Ecosystem Banner" />
+</p>
 
-[![Backend API](https://img.shields.io/badge/Backend%20API-Live%20on%20Render-4F46E5?style=for-the-badge&logo=render)](https://society-management-app-w77v.onrender.com/api/v1/auth/societies)
-[![Expo](https://img.shields.io/badge/Expo-SDK%2055-000000?style=for-the-badge&logo=expo)](https://expo.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/cloud/atlas)
-[![License](https://img.shields.io/badge/License-MIT-green.style=for-the-badge)](#license)
+<p align="center">
+  <a href="https://society-management-app-w77v.onrender.com/api/v1/auth/societies"><img src="https://img.shields.io/badge/Backend%20API-Live%20on%20Render-4F46E5?style=for-the-badge&logo=render" alt="Backend API" /></a>
+  <a href="https://expo.dev"><img src="https://img.shields.io/badge/Expo-SDK%2055-000000?style=for-the-badge&logo=expo" alt="Expo" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript" /></a>
+  <a href="https://www.mongodb.com/cloud/atlas"><img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb" alt="MongoDB" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" /></a>
+</p>
 
 **Portl** is a state-of-the-art, multi-tenant residency management and gate security application. Designed with modern claymorphism UI design, dynamic micro-animations, real-time WebSockets, digital QR code visitor passes, and automated SMTP email notifications, Portl delivers a seamless experience for **Residents**, **Security Guards**, **Committee Admins**, and **Super Admins**.
 
@@ -14,22 +18,30 @@
 
 ## 🌟 Interactive Features & Visual Showcase
 
-![Portl 3D Workflow Poster](docs/images/splash_workflow.png)
+<p align="center">
+  <img src="docs/images/splash_workflow.png" width="100%" style="border-radius: 12px; max-height: 480px; object-fit: cover;" alt="Portl 3D Workflow Poster" />
+</p>
 
 <div align="center">
   <table>
     <tr>
-      <td width="33%" align="center">
-        <b>🛡️ Security Guard Module</b><br/><br/>
-        <img src="docs/images/splash_security.png" width="100%" alt="Security Guard Module"/>
+      <td width="50%" align="center" valign="top">
+        <b>🔐 Login & Authentication</b><br/><br/>
+        <img src="docs/images/login.png" width="100%" style="border-radius: 8px;" alt="Login & Authentication"/>
       </td>
-      <td width="33%" align="center">
-        <b>🏡 Resident & Community Hub</b><br/><br/>
-        <img src="docs/images/splash_community.png" width="100%" alt="Resident & Community Hub"/>
+      <td width="50%" align="center" valign="top">
+        <b>👑 Admin Management Portal</b><br/><br/>
+        <img src="docs/images/admin.png" width="100%" style="border-radius: 8px;" alt="Admin Management Portal"/>
       </td>
-      <td width="33%" align="center">
-        <b>💳 Dues & Financial Management</b><br/><br/>
-        <img src="docs/images/splash_payments.png" width="100%" alt="Dues & Financial Management"/>
+    </tr>
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <br/><b>🛡️ Security Guard Terminal</b><br/><br/>
+        <img src="docs/images/gurad.png" width="100%" style="border-radius: 8px;" alt="Security Guard Terminal"/>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <br/><b>🏡 Resident Community Hub</b><br/><br/>
+        <img src="docs/images/resdient.png" width="100%" style="border-radius: 8px;" alt="Resident Community Hub"/>
       </td>
     </tr>
   </table>

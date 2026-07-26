@@ -121,12 +121,12 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <InAppNotificationProvider>
         <SuccessModalProvider>
-          <StatusBar style="light" />
+          <StatusBar style="auto" animated />
           <Stack
             screenOptions={{
               headerShown: false,
               animation: 'fade',
-              contentStyle: { backgroundColor: Colors.primary },
+              contentStyle: { backgroundColor: Colors.white },
             }}
           >
             <Stack.Screen name="index" />

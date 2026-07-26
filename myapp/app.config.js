@@ -29,6 +29,11 @@ module.exports = {
       package: "com.portl.app",
       versionCode: 1,
       predictiveBackGestureEnabled: false,
+      androidStatusBar: {
+        barStyle: "dark-content",
+        backgroundColor: "#FFFFFF",
+        translucent: true
+      },
       // Only set googleServicesFile if the file exists to prevent CI/CD build crashes when the secret is not configured yet.
       googleServicesFile: (function() {
         const fs = require('fs');

@@ -2,11 +2,14 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Colors } from '../../theme';
 
 export default function GuardLayout() {
   return (
-    <Tabs
+    <>
+      <StatusBar style="dark" animated />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.success,
@@ -68,5 +71,6 @@ export default function GuardLayout() {
         }}
       />
     </Tabs>
+    </>
   );
 }

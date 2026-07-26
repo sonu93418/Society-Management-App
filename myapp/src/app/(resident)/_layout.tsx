@@ -2,11 +2,14 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Colors } from '../../theme';
 
 export default function ResidentLayout() {
   return (
-    <Tabs
+    <>
+      <StatusBar style="dark" animated />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
@@ -77,5 +80,6 @@ export default function ResidentLayout() {
       <Tabs.Screen name="pre-approve" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
+    </>
   );
 }
